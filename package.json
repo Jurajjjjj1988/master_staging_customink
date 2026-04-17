@@ -1,0 +1,27 @@
+{
+  "name": "customink-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "E2E tests for CustomInk header & footer (staging)",
+  "scripts": {
+    "test": "playwright test",
+    "test:p1": "playwright test --grep @p1",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "dotenv": "^16.4.5",
+    "eslint": "^9.13.0",
+    "eslint-plugin-playwright": "^2.0.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
