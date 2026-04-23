@@ -42,6 +42,9 @@ const PAGE_ERROR_ALLOWLIST: readonly RegExp[] = [
   // `ci-header-prerender` calls `navigator.userAgentData.safari` which is undefined
   // in Chromium 120+. Tracked by header team; does not affect rendered output.
   /Cannot read properties of undefined \(reading 'safari'\)/,
+  // The search-results page (a separate app) throws ApiError objects from its API
+  // client. Out of header/footer scope; tracked by the search team.
+  /^ApiError\b/i,
 ];
 
 const isAllowlistedConsole = (text: string): boolean =>
@@ -97,8 +100,17 @@ export const test = base.extend<Fixtures>({
         }
       });
       page.on("pageerror", (err) => {
-        if (!isAllowlistedPageError(err.message)) {
-          pageErrors.push(err.message);
+        // Some pageErrors come from non-Error throws (e.g. third-party libs throwing
+        // plain objects). Compose the most informative string we can so triage is possible.
+        const parts = [
+          err.name && err.name !== "Error" ? err.name : null,
+          err.message,
+          err.stack ? err.stack.split("\n").slice(0, 3).join(" | ") : null,
+        ].filter(Boolean);
+        const text =
+          parts.length > 0 ? parts.join(" :: ") : JSON.stringify(err);
+        if (!isAllowlistedPageError(text)) {
+          pageErrors.push(text);
         }
       });
       page.on("response", (resp) => {
