@@ -28,6 +28,9 @@ test.describe("@p1 user-state — logged out", () => {
 });
 
 test.describe("@p2 user-state — logged in", () => {
+  // Conditional skip on environment readiness (auth state file). Once
+  // `storage/auth.json` is provided (OQ-2), this branch becomes a real test.
+  // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
     !hasAuthState,
     `Skipping authenticated test: ${AUTH_STATE_PATH} not present (OQ-2 — staging credentials required).`,

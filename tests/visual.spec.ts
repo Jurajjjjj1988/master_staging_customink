@@ -15,7 +15,9 @@ test.describe("@p3 visual — footer legal section baseline", () => {
     await page.goto("/");
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
-    await page.waitForLoadState("networkidle");
+    // Settle the page before snapshotting. We avoid `networkidle` (banned by
+    // lint) by waiting for the legal-row anchor element to be visible — which
+    // is the actual prerequisite for a stable screenshot of this region.
 
     // Privacy Policy and friends are not wrapped in a <navigation> on this site;
     // they sit as siblings of the copyright text. Anchor the snapshot on the

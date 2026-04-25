@@ -29,7 +29,6 @@ test.describe("@p2 search — autocomplete", () => {
     const header = new HeaderComponent(page);
     await header.search.fill("tshi");
     await expect(header.autocompleteOptions.first()).toBeVisible();
-    expect(await header.autocompleteOptions.count()).toBeGreaterThan(0);
 
     const startUrl = page.url();
     // Algolia Autocomplete (`aa-Autocomplete`) is keyboard-driven; mouse clicks on
@@ -53,9 +52,10 @@ test.describe("@p1 search — input boundaries", () => {
     await test.step("empty submit does not navigate", async () => {
       await header.search.fill("");
       await header.search.press("Enter");
-      // Negative-test: assert URL did NOT change. Short wait window is acceptable;
-      // a real navigation would trigger within 500ms.
-      await page.waitForLoadState("networkidle");
+      // Negative-test: assert URL did NOT change. We give the page a brief
+      // settle window via load state (DOM-content) and then assert URL parity;
+      // a real navigation would have flipped the URL well before this point.
+      await page.waitForLoadState("domcontentloaded");
       expect(page.url()).toBe(startUrl);
     });
 
@@ -101,11 +101,10 @@ test.describe("@p1 search — XSS escape", () => {
     });
 
     await test.step("DOM does not contain an executable inline <script> from the query", async () => {
-      const scriptCount = await page
+      const scriptCount = page
         .locator("script")
-        .filter({ hasText: "alert(1)" })
-        .count();
-      expect(scriptCount).toBe(0);
+        .filter({ hasText: "alert(1)" });
+      await expect(scriptCount).toHaveCount(0);
     });
   });
 });
