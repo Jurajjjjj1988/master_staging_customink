@@ -14,6 +14,41 @@ import { CookieBanner } from "../pages/components/CookieBanner";
  */
 test.use({ dismissCookie: false });
 
+/**
+ * Test #14b — GDPR/CCPA pre-consent leak (KNOWN BUG, OQ-8).
+ *
+ * `test.fail()` marks this as expected-to-fail until the bug is resolved. While
+ * the bug is present the test runs, captures the violation, and CI reports the
+ * known issue prominently rather than burying it in an annotation. When the
+ * OneTrust integration is fixed (analytics blocked pre-consent) this test will
+ * start passing — at which point `test.fail()` itself fails, signalling that
+ * the marker can be removed.
+ */
+test.describe("@p1 cookie-consent — pre-consent compliance (KNOWN BUG, OQ-8)", () => {
+  test.fail(
+    true,
+    "OQ-8: Google Analytics cookies (_ga, _gid, _gat) are written on first paint BEFORE the user has interacted with the consent banner. This violates GDPR Article 7 / CCPA pre-consent rules. Bug filed; remove `test.fail()` once OneTrust integration blocks GA scripts pre-consent.",
+  );
+
+  test("should_not_set_tracking_cookies_before_explicit_consent", async ({
+    page,
+    context,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("domcontentloaded");
+
+    const cookies = await context.cookies();
+    const tracking = cookies
+      .map((c) => c.name)
+      .filter((n) => /_ga|_gid|_fbp|_gcl|doubleclick/i.test(n));
+
+    expect(
+      tracking,
+      `Pre-consent tracking cookies present: ${tracking.join(", ")}`,
+    ).toEqual([]);
+  });
+});
+
 test.describe("@p1 cookie-consent — first visit", () => {
   test("should_show_cookie_banner_on_first_visit", async ({ page }) => {
     await page.goto("/");

@@ -6,6 +6,7 @@ import { FOOTER_LINKS } from "../data/footer-links";
 import { LEGAL_LINKS } from "../data/legal-links";
 import { FOLLOW_US_LINKS } from "../data/follow-us-links";
 import { checkLinkOk } from "../helpers/http-check";
+import { waitForFooterReady } from "../helpers/page-state";
 
 /**
  * Tests #2 #3 #4 — link integrity for the entire header + footer link surface.
@@ -141,17 +142,7 @@ test.describe("@p1 links — Follow-Us destinations", () => {
 test.describe("@p1 links — special protocols", () => {
   test("should_have_valid_tel_protocol_on_phone_link", async ({ page }) => {
     await page.goto("/");
-    // Wait for the footer Web Component to hydrate (it lazy-loads on staging),
-    // then scroll it into view so the section that contains the phone link
-    // finishes rendering before we query.
-    await page
-      .locator("ci-full-footer, [role='contentinfo']")
-      .first()
-      .waitFor({ state: "attached", timeout: 15_000 });
-    await page
-      .locator("ci-full-footer, [role='contentinfo']")
-      .first()
-      .scrollIntoViewIfNeeded();
+    await waitForFooterReady(page);
     // Pick the first `tel:` link anywhere on the page — both header and footer
     // expose the same number, and the role-scoped selector races contentinfo
     // attachment on slow paints.
