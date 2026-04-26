@@ -200,6 +200,27 @@ Both workflows pin the Playwright browser cache by `package-lock.json` hash — 
 
 ---
 
+## Roadmap
+
+Patterns surveyed against high-quality public Playwright suites and worth incorporating in future iterations:
+
+**Small, high-value:**
+
+- **`axeBuilder` fixture** (replace inline axe in test #16). Shared `withTags`/`exclude` config, ~30 min. Reference: Playwright official a11y docs.
+- **Issue-typed test annotations** on every `test.fail()`. `test.info().annotations.push({ type: "issue", description: "OQ-8" })` renders as a clickable link in the HTML report.
+- **HEAD probe cache + concurrency limit** for external Follow-Us link checks (test #3). Mitigates Facebook / TikTok rate-limit risk documented in spec §16.
+
+**Medium, defer to v2:**
+
+- **`@duckduckgo/autoconsent`** in place of the hand-rolled `OptanonAlertBoxClosed` cookie hack. Survives banner ID changes for free; supports 100+ CMPs.
+- **Pre-consent network audit** (consentcrawl pattern). Assert that GA / Facebook pixel / Optimizely network requests do NOT fire before consent. Stronger than the cookie-only check in test #14b.
+- **Argos / Percy / Chromatic** for visual baseline review (test #23). Designer signoff workflow built-in; replaces committing PNGs to git.
+- **`CODEOWNERS` for `data/*.ts`** + contract diff that surfaces marketing-driven path changes as a clear PR signal. Currently no public repo solves this elegantly.
+
+**Dead ends (avoid):**
+
+- **Mutation testing on the test suite itself.** Stryker does not support the Playwright runner. Mutation on shared helpers (e.g. `helpers/regex.ts`) is technically possible but offers little signal for a 5-line file.
+
 ## Debugging a failing test
 
 1. **Re-run the single test with the browser visible:**
