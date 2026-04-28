@@ -59,7 +59,12 @@ test.describe("@p2 secondary-actions — chat widget trigger", () => {
     page,
   }) => {
     await page.goto("/");
-    const chatTrigger = page.getByRole("button", { name: /^chat now$/i });
+    // LiveChat injects its own role="button" labeled "Chat Now" once the SDK
+    // loads — pick the first match so the site's own header button wins (and
+    // either path opens the same widget anyway).
+    const chatTrigger = page
+      .getByRole("button", { name: /^chat now$/i })
+      .first();
     await expect(chatTrigger).toBeVisible();
     await chatTrigger.click();
 

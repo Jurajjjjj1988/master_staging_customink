@@ -72,3 +72,17 @@ export const FOOTER_LINKS: readonly FooterLink[] = [
     skipHttpCheck: "environment-specific",
   },
 ];
+
+/**
+ * The footer's bottom-most row sits below the four-column section grid and
+ * holds three "site-meta" links plus an inline "custom t-shirts" anchor in
+ * the copyright sentence. These are NOT in the section grid above and the
+ * link integrity test (#2) treats them as their own bucket.
+ */
+export const FOOTER_META_LINKS = [
+  { name: "Custom Products", path: "/ink/custom-products" },
+  { name: "Promotional Items", path: "/products/promotional-products/218" },
+  { name: "Site Map", path: "/ink/sitemap" },
+  // The inline link inside "Custom Ink is your source for [custom t-shirts]."
+  { name: "custom t-shirts", path: "/products/t-shirts/4" },
+] as const;

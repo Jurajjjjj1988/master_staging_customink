@@ -2,7 +2,7 @@ import { test, expect, type Page } from "../fixtures/pages.fixture";
 import { HeaderComponent } from "../pages/components/HeaderComponent";
 import { FooterComponent } from "../pages/components/FooterComponent";
 import { HEADER_PRIMARY_NAV } from "../data/header-links";
-import { FOOTER_LINKS } from "../data/footer-links";
+import { FOOTER_LINKS, FOOTER_META_LINKS } from "../data/footer-links";
 import { LEGAL_LINKS } from "../data/legal-links";
 import { FOLLOW_US_LINKS } from "../data/follow-us-links";
 import { checkLinkOk } from "../helpers/http-check";
@@ -104,6 +104,37 @@ test.describe("@p1 links — internal link integrity", () => {
   }
 });
 
+test.describe("@p1 links — footer meta row (Custom Products | Site Map | inline)", () => {
+  /**
+   * The footer's bottom-meta row links live outside the section grid covered
+   * by test #2. They include "Custom Products", "Promotional Items", "Site
+   * Map", and the inline "custom t-shirts" anchor in the copyright sentence.
+   * Each must navigate to its expected path and return a non-error status.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+  });
+
+  for (const meta of FOOTER_META_LINKS) {
+    test(`should_navigate_to_expected_url_when_clicking_footer-meta_${slug(meta.name)}`, async ({
+      page,
+    }) => {
+      const link = page
+        .getByRole("contentinfo")
+        .getByRole("link", { name: meta.name, exact: true });
+      await expect(link.first()).toHaveAttribute("href", /.+/);
+
+      const href = await link.first().getAttribute("href");
+      const url = new URL(href!, page.url());
+      const normalize = (p: string): string => p.replace(/\/$/, "") || "/";
+      expect(normalize(url.pathname)).toBe(normalize(meta.path));
+
+      const status = await checkLinkOk(page.request, url.toString());
+      expect(status).toBeLessThan(400);
+    });
+  }
+});
+
 test.describe("@p1 links — Follow-Us destinations", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -143,12 +174,21 @@ test.describe("@p1 links — special protocols", () => {
   test("should_have_valid_tel_protocol_on_phone_link", async ({ page }) => {
     await page.goto("/");
     await waitForFooterReady(page);
-    // Pick the first `tel:` link anywhere on the page — both header and footer
-    // expose the same number, and the role-scoped selector races contentinfo
-    // attachment on slow paints.
-    const phoneLink = page.locator('a[href^="tel:"]').first();
-    await expect(phoneLink).toBeAttached({ timeout: 30_000 });
-    await expect(phoneLink).toHaveAttribute("href", "tel:855-271-2660");
+    // The site rotates among a small pool of US toll-free support numbers
+    // (observed: 855-271-2660, 855-256-1652) — likely an A/B or geo split.
+    // We therefore verify the FORMAT (a valid US tel: URI) rather than a
+    // specific digit string, scoped to the footer where a support phone
+    // is reliably anchored.
+    const footerPhone = page
+      .locator("ci-full-footer, [role='contentinfo']")
+      .first()
+      .locator('a[href^="tel:"]')
+      .first();
+    await expect(footerPhone).toBeAttached({ timeout: 30_000 });
+    await expect(footerPhone).toHaveAttribute(
+      "href",
+      /^tel:\d{3}-\d{3}-\d{4}$/,
+    );
   });
 
   test("should_have_existing_target_for_skip_link", async ({ page }) => {

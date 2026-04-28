@@ -29,36 +29,35 @@ test.describe("@p1 seo — <head> essentials", () => {
   });
 
   test("should_have_meta_description_within_serp_window", async ({ page }) => {
-    const description = await page
-      .locator('head meta[name="description"]')
-      .getAttribute("content");
-    expect(description, "meta description must exist").toBeTruthy();
-    expect(description!.length).toBeGreaterThan(40);
-    expect(description!.length).toBeLessThan(200);
+    // Length-bound regex enforces the 40–200 char SERP-window invariant in
+    // a single web-first assertion (catches missing AND oversized descriptions).
+    await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
+      "content",
+      /^.{40,200}$/s,
+    );
   });
 
   test("should_have_absolute_canonical_url", async ({ page }) => {
-    const canonical = await page
-      .locator('head link[rel="canonical"]')
-      .getAttribute("href");
-    expect(canonical, "canonical link must exist").toBeTruthy();
-    expect(canonical!).toMatch(/^https:\/\/[^/]+\//);
+    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      /^https:\/\/[^/]+\//,
+    );
   });
 
   test("should_have_open_graph_image_for_social_previews", async ({ page }) => {
-    const ogImage = await page
-      .locator('head meta[property="og:image"]')
-      .getAttribute("content");
-    expect(ogImage, "og:image must exist").toBeTruthy();
-    expect(ogImage!).toMatch(/^https?:\/\//);
+    await expect(
+      page.locator('head meta[property="og:image"]'),
+    ).toHaveAttribute("content", /^https?:\/\//);
   });
 
   test("should_have_viewport_meta_for_mobile_rendering", async ({ page }) => {
     const viewports = page.locator('head meta[name="viewport"]');
-    // Some sites emit more than one viewport meta from different scripts; we only
-    // require that at least one declares a mobile-ready viewport.
+    // Some sites emit more than one viewport meta from different scripts; we
+    // only require that at least one declares a mobile-ready viewport.
     await expect(viewports).not.toHaveCount(0);
-    const firstContent = await viewports.first().getAttribute("content");
-    expect(firstContent).toMatch(/width=device-width/i);
+    await expect(viewports.first()).toHaveAttribute(
+      "content",
+      /width=device-width/i,
+    );
   });
 });

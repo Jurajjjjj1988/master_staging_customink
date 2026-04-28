@@ -1,5 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
-import { test, expect } from "../fixtures/pages.fixture";
+import { test, expect } from "../fixtures/axe.fixture";
 
 /**
  * Tests #16 #17 #18 — accessibility.
@@ -33,11 +32,10 @@ test.describe("@p1 a11y — axe scan", () => {
   });
 
   for (const region of REGIONS) {
-    test(`should_pass_axe_scan_on_${region.name}`, async ({ page }) => {
-      const results = await new AxeBuilder({ page })
-        .include(region.include)
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze();
+    test(`should_pass_axe_scan_on_${region.name}`, async ({
+      makeAxeBuilder,
+    }) => {
+      const results = await makeAxeBuilder().include(region.include).analyze();
 
       const blocking = results.violations.filter(
         (v) => v.impact === "critical" || v.impact === "serious",
