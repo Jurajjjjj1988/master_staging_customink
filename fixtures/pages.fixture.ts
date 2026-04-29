@@ -54,6 +54,11 @@ const PAGE_ERROR_ALLOWLIST: readonly RegExp[] = [
   // The search-results page (a separate app) throws ApiError objects from its API
   // client. Out of header/footer scope; tracked by the search team.
   /^ApiError\b/i,
+  // The /about page is rendered by the Next.js `next-frontend-web` micro-frontend
+  // and emits a minified React #418 hydration warning on this build. The page
+  // renders correctly; the warning is a known dev-time signal that does not
+  // affect users. Tracked by the next-frontend-web team.
+  /Minified React error #418/,
 ];
 
 const isAllowlistedConsole = (text: string): boolean =>

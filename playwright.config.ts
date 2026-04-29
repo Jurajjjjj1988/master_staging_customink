@@ -31,8 +31,26 @@ export default defineConfig({
       use: { ...devices["Pixel 5"] },
     },
     {
+      name: "mobile-safari",
+      // iOS user share for apparel e-commerce is meaningful — first-class project
+      // rather than a nightly-only afterthought.
+      use: { ...devices["iPhone 13"] },
+    },
+    {
       name: "webkit-desktop",
       use: { ...devices["Desktop Safari"] },
+    },
+    {
+      // Production smoke: same suite, different baseURL. Run with
+      // `npm run test:prod-smoke` to validate the suite against
+      // production-routed pages (P1 only; gated by tag).
+      name: "prod-smoke",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        baseURL: process.env.PROD_URL ?? "https://www.customink.com",
+      },
+      grep: /@p1/,
     },
   ],
 });

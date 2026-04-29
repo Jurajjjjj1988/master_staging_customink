@@ -25,6 +25,54 @@ test.describe("@p1 user-state — logged out", () => {
       /\/profiles\/users\/sign_in/,
     );
   });
+
+  /**
+   * Test #38 — avatar dropdown for logged-out users.
+   *
+   * Hovering the Sign-In affordance opens a panel with a heading, a
+   * descriptive sentence, and TWO actions: "Sign In" (existing user) and
+   * "Create An Account" (new user). The Create-An-Account path is the only
+   * onboarding entry from the global header — losing it would cut off the
+   * primary acquisition funnel without anyone noticing in functional tests
+   * that target the top-level Sign-In link.
+   */
+  test("should_open_avatar_dropdown_with_signin_and_create_account_when_signin_hovered", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await test.step("hovering Sign-In opens the panel", async () => {
+      await header.signInLink.hover();
+      // Both buttons live in a panel that animates in — wait for the
+      // distinctive "Create An Account" affordance as the panel anchor.
+      await expect(
+        page
+          .getByRole("link", { name: /create an account/i })
+          .or(page.getByRole("button", { name: /create an account/i })),
+      ).toBeVisible({ timeout: 5_000 });
+    });
+
+    await test.step("panel exposes Sign In and Create An Account actions", async () => {
+      const signInAction = page
+        .getByRole("link", { name: /^sign in$/i })
+        .or(page.getByRole("button", { name: /^sign in$/i }));
+      const createAccount = page
+        .getByRole("link", { name: /create an account/i })
+        .or(page.getByRole("button", { name: /create an account/i }));
+
+      await expect(signInAction.first()).toBeVisible();
+      await expect(createAccount.first()).toBeVisible();
+
+      // Sign-In action navigates to the existing-user flow.
+      const signInHref = await signInAction.first().getAttribute("href");
+      expect(signInHref).toMatch(/\/profiles\/users\/sign_in/);
+
+      // Create-An-Account action navigates to the new-user registration flow.
+      const createHref = await createAccount.first().getAttribute("href");
+      expect(createHref).toMatch(/sign_up|register|new|create/i);
+    });
+  });
 });
 
 test.describe("@p2 user-state — logged in", () => {
