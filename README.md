@@ -15,20 +15,22 @@ npm run check    # typecheck + lint + P1 suite
 
 ## What's covered
 
-The full test catalog — every scenario, what it asserts, and which regression class it would catch — lives in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. It is the single source of truth, grouped by user-facing concern (Render, Navigation, Search, Accessibility, …) rather than by spec file.
+| Section                   | Tests | Coverage in one line                                                                                                                                                |
+| ------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Render & layout**       |     8 | Cross-page consistency (5 pages), logo navigation, 1023/320 breakpoints, footer visual baselines, header bounding-box positioning, LCP budget                       |
+| **Navigation & links**    |   ~20 | Header nav, mega-menus (5 panels + structural + content sanity + critical CTAs), footer sections, follow-us, footer-meta, special protocols, page-wide href hygiene |
+| **Search**                |    11 | Submit, autocomplete open/close, ArrowDown+Enter navigation, empty/oversized inputs, XSS escape, 5 special-character classes                                        |
+| **User state**            |     3 | Logged-out Sign-In link, avatar dropdown (Sign-In + Create An Account), logged-in dropdown + logout                                                                 |
+| **Marketing & support**   |     7 | Promo banner + Shop Sale CTA, phone label + tel:, Chat Now button, Send Email click-through, YouTube embed, Klaviyo container, feedback widget                      |
+| **Cookie consent**        |     5 | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                         |
+| **Accessibility**         |     3 | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                    |
+| **Page quality**          |    13 | Copyright year, SEO `<head>` essentials (×5), duplicate IDs, alt text, button accessible names, JSON-LD validity, robots.txt + sitemap discovery                    |
+| **Helpers (unit)**        |     5 | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                          |
+| **Cross-cutting fixture** |     — | `monitorPageHealth` runs on every test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                            |
 
-High-level coverage:
+**Total: 49 functional scenarios + 1 cross-cutting fixture, 88 P1 tests when expanded across data-driven cases.**
 
-- Render & layout consistency across 5 pages, including 1023px and 320px breakpoints
-- Every internal link in header + footer + mega-menus has a valid `href` and a non-error status
-- Search submit, autocomplete, XSS handling, special-character cases
-- Cookie consent flows including the rejection-compliance contract
-- Accessibility baseline via axe-core (WCAG 2.1 AA) plus keyboard-operability
-- Marketing surface: promo banner, support phone/chat affordances, YouTube embed, Klaviyo signup container, feedback widget
-- Page quality: duplicate IDs, alt text, button accessible names, JSON-LD structured data
-- SEO essentials in `<head>` and discovery infrastructure (`robots.txt`, `sitemap.xml`)
-
-A cross-cutting `monitorPageHealth` fixture runs on every test — see ADR-002.
+The full catalog — every scenario with the exact assertion, technique, and regression class it catches — is in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
 
 ## Architecture
 
