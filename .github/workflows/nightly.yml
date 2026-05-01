@@ -1,0 +1,64 @@
+name: Nightly - Full Suite
+
+# Full E2E regression: every test, every project, every night at 02:00 UTC.
+# Target wall time: < 8 minutes (8-way sharded across 3 browser projects).
+# Also dispatchable manually for ad-hoc runs against staging.
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+env:
+  BASE_URL: https://www-master.staging.customink.com
+
+jobs:
+  test:
+    name: ${{ matrix.project }} (shard ${{ matrix.shard }}/8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    strategy:
+      # Surface failures across every project/shard combo, not just the first.
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, mobile-chrome, webkit-desktop]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Map Playwright project to its underlying browser binary.
+      # webkit-desktop needs WebKit; the other two run on Chromium.
+      - name: Resolve browser to install
+        id: browser
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          if [ "$PROJECT" = "webkit-desktop" ]; then
+            echo "name=webkit" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=chromium" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps ${{ steps.browser.outputs.name }}
+
+      - name: Run full suite
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/8
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.project }}-shard-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 14
