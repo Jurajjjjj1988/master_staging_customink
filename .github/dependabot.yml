@@ -1,0 +1,38 @@
+version: 2
+
+# Dependabot keeps dependencies current and surfaces security advisories as
+# pull requests. Grouped by ecosystem so weekly noise stays manageable.
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Bratislava"
+    open-pull-requests-limit: 5
+    groups:
+      playwright:
+        patterns:
+          - "@playwright/*"
+          - "playwright*"
+          - "@axe-core/*"
+      tooling:
+        patterns:
+          - "eslint*"
+          - "@typescript-eslint/*"
+          - "typescript"
+      types:
+        patterns:
+          - "@types/*"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
