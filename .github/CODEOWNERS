@@ -1,0 +1,21 @@
+# CODEOWNERS — see https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+#
+# Default owner for everything in this repo.
+*                                @qa-team
+
+# Test data files describe the marketing/CMS surface. Marketing edits that
+# change a footer link path (`/help_center` → `/support`) need to update
+# this file. Tagging the marketing team here surfaces test breakage as a
+# review signal at PR time, not a flaky CI run two days later.
+/data/footer-links.ts            @qa-team @marketing-team
+/data/header-links.ts            @qa-team @marketing-team
+/data/follow-us-links.ts         @qa-team @marketing-team
+/data/legal-links.ts             @qa-team @legal-team
+
+# Allowlists govern what noise the suite tolerates. Adding to them silences
+# real signal — both QA and the platform team should review.
+/fixtures/pages.fixture.ts       @qa-team @platform-team
+
+# Architecture decisions are immutable once accepted. New ADRs welcome;
+# edits to existing ones need senior review.
+/docs/adr/                       @qa-team @principal-engineer
