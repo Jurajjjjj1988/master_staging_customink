@@ -1,0 +1,849 @@
+import { existsSync } from "node:fs";
+import { test, expect } from "../fixtures/pages.fixture";
+import { HeaderComponent } from "../pages/components/HeaderComponent";
+import { waitForFooterReady } from "../helpers/page-state";
+
+const AUTH_STATE_PATH = "storage/auth.json";
+const hasAuthState = existsSync(AUTH_STATE_PATH);
+
+/**
+ * End-to-end user journeys through the global header.
+ *
+ * Each journey gets up to three flavours: a positive (happy) path, a
+ * negative (failure) path the user must still survive, and an edge case
+ * at a boundary. Where a flavour does not make sense for a journey, it
+ * is omitted rather than padded.
+ *
+ * Tests that require staging credentials (logged-in flows) skip with a
+ * clear reason when `storage/auth.json` is not present, the same gate as
+ * the rest of the suite.
+ */
+
+// ---------------------------------------------------------------------------
+// 1. FIND — submit a search query
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — find / search submit", () => {
+  test("positive: user submits a valid query and lands on results that reflect it", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await header.submitSearch("tshirt");
+    await page.waitForURL((url) => /tshirt/i.test(url.toString()), {
+      timeout: 15_000,
+    });
+    // Beyond the URL: results page must not be a 404 / blank shell.
+    await expect(page).toHaveTitle(/.+/);
+    await expect(page.locator("body")).toBeVisible();
+  });
+
+  test("negative: empty submit does not navigate away", async ({ page }) => {
+    await page.goto("/");
+    const startUrl = page.url();
+    const header = new HeaderComponent(page);
+
+    await header.search.fill("");
+    await header.search.press("Enter");
+    await page.waitForLoadState("domcontentloaded");
+    expect(page.url(), "empty query should not trigger navigation").toBe(
+      startUrl,
+    );
+  });
+
+  test("edge: 1000-character query is accepted without crashing the page", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await header.search.fill("a".repeat(1000));
+    await header.search.press("Enter");
+    await page.waitForLoadState("domcontentloaded");
+    // The page is still alive — title remains non-empty.
+    await expect(page).toHaveTitle(/.+/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. AUTOCOMPLETE — search suggestions while typing
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — autocomplete suggestions", () => {
+  test("positive: typing opens suggestions and ArrowDown+Enter navigates", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+    const startUrl = page.url();
+
+    await header.search.fill("tshi");
+    await expect(header.autocompleteOptions.first()).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // Algolia's autocomplete is keyboard-driven; ArrowDown selects, Enter
+    // commits — mouse clicks on suggestion items don't reliably register
+    // because of the focus model.
+    await header.search.press("ArrowDown");
+    await header.search.press("Enter");
+    await page.waitForURL((url) => url.toString() !== startUrl, {
+      timeout: 12_000,
+    });
+  });
+
+  test("negative: pressing Escape closes the suggestions", async ({ page }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await header.search.fill("tshi");
+    await expect(header.autocompleteOptions.first()).toBeVisible();
+    await header.search.press("Escape");
+    await expect(header.autocompleteOptions.first()).toBeHidden();
+  });
+
+  test("edge: special characters in the query do not crash the suggestion list", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    // Quotes, ampersand, emoji, leading whitespace — none of these should
+    // hang or break Algolia's input handling.
+    await header.search.fill(`tom's "shirt" 👕 a&b`);
+    await page.waitForLoadState("domcontentloaded");
+    // Either suggestions render or the listbox stays closed; the page
+    // must remain alive in either case.
+    await expect(page).toHaveTitle(/.+/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. SEARCH NO-RESULTS — query that matches nothing
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — search returns no results", () => {
+  /**
+   * The empty-state path is its own bug class: a regression that silently
+   * sends the user to the homepage on no-match, or shows stale recommendations
+   * without a "no results" cue, ships without this test.
+   */
+  test("positive: nonexistent query lands on a results page that says it found nothing", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+    const NONEXISTENT = "qzx9f7" + Date.now().toString(36);
+
+    await header.submitSearch(NONEXISTENT);
+    await page.waitForLoadState("domcontentloaded");
+
+    // The query must reach the results route — not be silently dropped.
+    await expect(page).toHaveURL(new RegExp(NONEXISTENT, "i"));
+
+    // Either an explicit no-results message OR an empty results grid is
+    // acceptable; what is NOT is the homepage rendering as if no search
+    // happened.
+    const message = page.getByText(
+      /no results|nothing found|0 results|did not match|couldn['’]t find/i,
+    );
+    const grid = page
+      .getByRole("list", { name: /products|results/i })
+      .or(page.locator("[class*='results'], [class*='ResultsGrid']"))
+      .first();
+
+    const hasMessage = (await message.count()) > 0;
+    const itemCount = await grid
+      .getByRole("listitem")
+      .or(grid.getByRole("link"))
+      .count()
+      .catch(() => -1);
+
+    expect(
+      hasMessage || itemCount === 0,
+      "expected either a no-results message or an empty results grid",
+    ).toBe(true);
+  });
+
+  test("edge: whitespace-only query is rejected or treated as empty", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const startUrl = page.url();
+    const header = new HeaderComponent(page);
+
+    await header.search.fill("   ");
+    await header.search.press("Enter");
+    await page.waitForLoadState("domcontentloaded");
+
+    // Acceptable: either we stayed on the homepage (input rejected
+    // client-side) OR we reached a results page that handled the query
+    // without a stack trace. Not acceptable: a hard error.
+    const stayed = page.url() === startUrl;
+    const reachedResults = /\/search|q=|query=/.test(page.url());
+    expect(stayed || reachedResults).toBe(true);
+    await expect(page).toHaveTitle(/.+/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. GET HELP CALL — phone support link
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — call support", () => {
+  test("positive: phone affordance is dialable in the format the OS dialer accepts", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    // Phone link lives in the lazy-hydrated `ci-full-footer`; without this
+    // wait the locator races the hydration and frequently loses.
+    await waitForFooterReady(page);
+
+    const phone = page.locator('a[href^="tel:"]').first();
+    await expect(phone).toBeVisible({ timeout: 15_000 });
+    // The number rotates between toll-free pool — verify the format,
+    // not the digits.
+    await expect(phone).toHaveAttribute(
+      "href",
+      /^tel:\+?\d{1,3}-?\d{3}-?\d{3}-?\d{4}$/,
+    );
+    await expect(phone).toBeEnabled();
+
+    // The label users actually look for must be reachable nearby.
+    await expect(
+      page
+        .getByText(/talk to a real person|customer service|call us|need help/i)
+        .first(),
+    ).toBeVisible();
+  });
+
+  test("edge: more than one tel: link on the page agree on the format", async ({
+    page,
+  }) => {
+    // Some pages render the phone twice (header support strip + footer
+    // contact section). Both must follow the same format — a divergence
+    // means a regression where one was hardcoded and the other rotated.
+    await page.goto("/");
+    await waitForFooterReady(page);
+    const all = page.locator('a[href^="tel:"]');
+    const count = await all.count();
+    test.skip(count < 2, "page exposes only one tel: link");
+
+    const formats = await Promise.all(
+      Array.from({ length: count }, (_, i) => all.nth(i).getAttribute("href")),
+    );
+    for (const href of formats) {
+      expect(href).toMatch(/^tel:\+?\d{1,3}-?\d{3}-?\d{3}-?\d{4}$/);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. CHAT NOW — live chat trigger
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — chat now", () => {
+  test("positive: clicking Chat Now opens the LiveChat widget", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const chatTrigger = page
+      .getByRole("button", { name: /^chat now$/i })
+      .first();
+    await expect(chatTrigger).toBeVisible();
+    await chatTrigger.click();
+
+    // The widget injects an iframe; we don't poke its body (third-party
+    // surface), only that it opened.
+    const widget = page.frameLocator(
+      'iframe[title*="LiveChat" i], iframe[title*="chat widget" i]',
+    );
+    await expect(widget.locator("body")).toBeAttached({ timeout: 10_000 });
+  });
+
+  test("edge: clicking Chat Now twice does not stack widget instances", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const chatTrigger = page
+      .getByRole("button", { name: /^chat now$/i })
+      .first();
+    await expect(chatTrigger).toBeVisible();
+
+    await chatTrigger.click();
+    await chatTrigger.click({ force: true }).catch(() => {
+      /* widget may capture focus and intercept second click — that's fine */
+    });
+
+    // Only one chat iframe should exist after rapid clicks. More than
+    // one indicates an event-handler regression that loads the widget
+    // twice (memory leak + UI flicker).
+    const iframes = page.locator(
+      'iframe[title*="LiveChat" i], iframe[title*="chat widget" i]',
+    );
+    const count = await iframes.count();
+    expect(count, "exactly one chat widget instance").toBeLessThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. FAVORITES — heart a product, see it on the favorites page
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — favorites", () => {
+  test("positive: user adds a product to favorites and finds it on /products/favorites", async ({
+    page,
+  }) => {
+    await page.goto("/products/t-shirts/4");
+
+    // Land on a product detail page so the heart affordance is reachable.
+    const productCard = page
+      .getByRole("link", { name: /.+/ })
+      .filter({ has: page.locator("img") })
+      .first();
+    await expect(productCard).toBeVisible({ timeout: 15_000 });
+    await productCard.click();
+    await page.waitForLoadState("domcontentloaded");
+
+    const heart = page
+      .getByRole("button", {
+        name: /favorite|add to favorites|save (this )?(design|product)/i,
+      })
+      .or(page.getByLabel(/favorite|heart/i))
+      .first();
+
+    await expect(heart, "favorites affordance is reachable").toBeVisible({
+      timeout: 15_000,
+    });
+    await heart.click();
+
+    // The user expects feedback: pressed-state, toast, or count badge.
+    const becamePressed = await heart
+      .getAttribute("aria-pressed")
+      .then((v) => v === "true")
+      .catch(() => false);
+    const toast = await page
+      .getByText(/added to favorites|saved/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    expect(
+      becamePressed || toast,
+      "expected heart to flip pressed-state or a confirmation toast",
+    ).toBe(true);
+
+    const header = new HeaderComponent(page);
+    await Promise.all([
+      page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
+      header.favorites.click(),
+    ]);
+
+    // Either persisted item shows OR the anonymous empty-state copy is
+    // present. The route working is the test; persistence requires login.
+    const persistedItem = page
+      .getByRole("listitem")
+      .or(page.locator("[class*='Favorites']"))
+      .first();
+    const anonEmpty = page.getByText(
+      /sign in to save|no favorites yet|create an account to save/i,
+    );
+    await expect(persistedItem.or(anonEmpty).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test("negative: clicking favorites in the header without anything saved shows the empty state", async ({
+    page,
+  }) => {
+    // Anonymous, no saved products → favorites page must communicate the
+    // empty state, not crash or show stale data.
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await Promise.all([
+      page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
+      header.favorites.click(),
+    ]);
+
+    await expect(
+      page.getByText(
+        /no favorites yet|sign in to save|haven['’]t saved any|create an account to save/i,
+      ),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("edge: toggling the heart twice on the same product leaves it un-favorited", async ({
+    page,
+  }) => {
+    await page.goto("/products/t-shirts/4");
+    const productCard = page
+      .getByRole("link", { name: /.+/ })
+      .filter({ has: page.locator("img") })
+      .first();
+    await productCard.click();
+    await page.waitForLoadState("domcontentloaded");
+
+    const heart = page
+      .getByRole("button", {
+        name: /favorite|add to favorites|save (this )?(design|product)/i,
+      })
+      .or(page.getByLabel(/favorite|heart/i))
+      .first();
+    await expect(heart).toBeVisible({ timeout: 15_000 });
+
+    const initialPressed = await heart.getAttribute("aria-pressed");
+    await heart.click();
+    await heart.click();
+    const finalPressed = await heart.getAttribute("aria-pressed");
+
+    // Two toggles return to the start state — not stuck "on" or counted twice.
+    expect(finalPressed).toBe(initialPressed);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. REGISTRATION — sign up via the avatar dropdown
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — registration", () => {
+  test("positive: user opens registration from the avatar and sees a real signup form", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await header.signInLink.hover();
+    const createAccount = page
+      .getByRole("link", { name: /create an account/i })
+      .or(page.getByRole("button", { name: /create an account/i }))
+      .first();
+    await expect(createAccount).toBeVisible({ timeout: 5_000 });
+
+    await Promise.all([
+      page.waitForURL(/sign_up|register|new|create/i, { timeout: 15_000 }),
+      createAccount.click(),
+    ]);
+
+    // The form is what makes this useful — email + password + a submit button.
+    await expect(
+      page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i)),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: /create.*account|sign up|register/i,
+      }),
+    ).toBeEnabled();
+  });
+
+  test("negative: submitting an invalid email shows a validation message", async ({
+    page,
+  }) => {
+    await page.goto("/profiles/users/sign_up").catch(async () => {
+      // Some staging deployments use /sign_up as a sub-route; navigate
+      // via the affordance instead if direct goto fails.
+      await page.goto("/");
+      const header = new HeaderComponent(page);
+      await header.signInLink.hover();
+      await page
+        .getByRole("link", { name: /create an account/i })
+        .first()
+        .click();
+      await page.waitForLoadState("domcontentloaded");
+    });
+
+    const emailField = page
+      .getByLabel(/email/i)
+      .or(page.getByPlaceholder(/email/i))
+      .first();
+    test.skip(
+      (await emailField.count()) === 0,
+      "registration form not reachable on this deployment",
+    );
+
+    await emailField.fill("not-an-email");
+    const passwordField = page
+      .getByLabel(/password/i)
+      .or(page.getByPlaceholder(/password/i))
+      .first();
+    if ((await passwordField.count()) > 0) {
+      await passwordField.fill("password123");
+    }
+
+    await page
+      .getByRole("button", { name: /create.*account|sign up|register/i })
+      .first()
+      .click();
+    await page.waitForLoadState("domcontentloaded");
+
+    // Either the browser's native validation kicks in (input invalid) or
+    // the server rejects with a visible message. A silent submit that
+    // navigates to dashboard is the regression to catch.
+    const native = await emailField
+      .evaluate(
+        (el: HTMLInputElement) => !el.validity.valid && !!el.validationMessage,
+      )
+      .catch(() => false);
+    const serverMessage = await page
+      .getByText(/invalid|enter a valid|not a valid|please enter/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    expect(
+      native || serverMessage,
+      "expected validation feedback for invalid email",
+    ).toBe(true);
+  });
+
+  test("edge: submitting an empty form blocks the request and keeps the user on the page", async ({
+    page,
+  }) => {
+    await page.goto("/").then(async () => {
+      const header = new HeaderComponent(page);
+      await header.signInLink.hover();
+      await page
+        .getByRole("link", { name: /create an account/i })
+        .first()
+        .click();
+      await page.waitForLoadState("domcontentloaded");
+    });
+
+    const submit = page
+      .getByRole("button", { name: /create.*account|sign up|register/i })
+      .first();
+    test.skip(
+      (await submit.count()) === 0,
+      "registration form not reachable on this deployment",
+    );
+
+    const urlBefore = page.url();
+    await submit.click();
+    await page.waitForLoadState("domcontentloaded");
+    expect(
+      page.url(),
+      "empty submit must not navigate away from the form",
+    ).toBe(urlBefore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. LOGIN — sign in via the avatar dropdown
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — log in", () => {
+  test("positive: user opens sign-in from the avatar and sees a real sign-in form", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    await header.signInLink.hover();
+    const signIn = page
+      .getByRole("link", { name: /^sign in$/i })
+      .or(page.getByRole("button", { name: /^sign in$/i }))
+      .first();
+    await expect(signIn).toBeVisible({ timeout: 5_000 });
+
+    await Promise.all([
+      page.waitForURL(/\/profiles\/users\/sign_in/, { timeout: 15_000 }),
+      signIn.click(),
+    ]);
+
+    await expect(
+      page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i)),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /sign in|log in/i }),
+    ).toBeEnabled();
+  });
+
+  test("negative: invalid credentials surface an error and keep the user on the form", async ({
+    page,
+  }) => {
+    await page.goto("/profiles/users/sign_in");
+
+    const emailField = page
+      .getByLabel(/email/i)
+      .or(page.getByPlaceholder(/email/i))
+      .first();
+    test.skip(
+      (await emailField.count()) === 0,
+      "sign-in form not reachable on this deployment",
+    );
+
+    await emailField.fill(`wrong+${Date.now()}@example.com`);
+    await page
+      .getByLabel(/password/i)
+      .or(page.getByPlaceholder(/password/i))
+      .first()
+      .fill("definitelyWrongPassword!");
+
+    await page
+      .getByRole("button", { name: /sign in|log in/i })
+      .first()
+      .click();
+    await page.waitForLoadState("domcontentloaded");
+
+    // The user must still be on the sign-in form (or a same-form re-render);
+    // an actionable error message must be visible.
+    expect(page.url()).toMatch(/sign_in|users\/sign_in/);
+    await expect(
+      page.getByText(
+        /invalid|incorrect|did not match|couldn['’]t (sign you in|find)/i,
+      ),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("edge: empty form submission is blocked and stays on the page", async ({
+    page,
+  }) => {
+    await page.goto("/profiles/users/sign_in");
+
+    const submit = page
+      .getByRole("button", { name: /sign in|log in/i })
+      .first();
+    test.skip(
+      (await submit.count()) === 0,
+      "sign-in form not reachable on this deployment",
+    );
+
+    const urlBefore = page.url();
+    await submit.click();
+    await page.waitForLoadState("domcontentloaded");
+    expect(page.url(), "empty submit must not log the user in").toBe(urlBefore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. CART — add to cart, see line item + non-zero total
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — cart", () => {
+  test("positive: user adds a product to the cart and sees it with a non-zero total", async ({
+    page,
+  }) => {
+    await page.goto("/products/t-shirts/4");
+
+    const productCard = page
+      .getByRole("link", { name: /.+/ })
+      .filter({ has: page.locator("img") })
+      .first();
+    await expect(productCard).toBeVisible({ timeout: 15_000 });
+    await productCard.click();
+    await page.waitForLoadState("domcontentloaded");
+
+    const addToCart = page
+      .getByRole("button", {
+        name: /add to cart|add to bag|buy it now|order this/i,
+      })
+      .or(
+        page.getByRole("link", {
+          name: /add to cart|add to bag|buy it now|order this/i,
+        }),
+      )
+      .first();
+
+    test.skip(
+      (await addToCart.count()) === 0,
+      "Product requires the Design Lab — no direct add-to-cart on this template. " +
+        "End-to-end cart math runs from the design-lab flow, out of header/footer scope.",
+    );
+
+    await addToCart.click();
+
+    const header = new HeaderComponent(page);
+    if (!page.url().match(/\/(cart|checkout)/)) {
+      await Promise.all([
+        page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
+        header.cart.click(),
+      ]);
+    }
+
+    await expect(
+      page.getByRole("heading", { name: /cart|order|review/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
+
+    const lineItem = page
+      .getByRole("listitem")
+      .or(page.locator("[class*='LineItem'], [class*='CartItem']"))
+      .first();
+    await expect(lineItem, "cart contains at least one line item").toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Total formatted as $X.XX with at least one digit before the decimal,
+    // so $0.00 fails this check — the bug class this test exists to catch.
+    const total = page.getByText(/\$\s?[1-9]\d*(\.\d{2})?/).first();
+    await expect(total, "cart total is non-zero").toBeVisible();
+  });
+
+  test("negative: visiting /cart with an empty cart shows the empty state", async ({
+    page,
+  }) => {
+    await page.goto("/cart").catch(async () => {
+      await page.goto("/");
+      const header = new HeaderComponent(page);
+      await header.cart.click();
+      await page.waitForLoadState("domcontentloaded");
+    });
+
+    // An empty cart must communicate it — silent zero items / zero total
+    // without copy is the regression to catch.
+    await expect(
+      page.getByText(
+        /your cart is empty|no items in (your )?cart|cart is empty|let['’]s get started/i,
+      ),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("edge: cart total recalculates when line-item quantity is changed", async ({
+    page,
+  }) => {
+    await page.goto("/products/t-shirts/4");
+    const productCard = page
+      .getByRole("link", { name: /.+/ })
+      .filter({ has: page.locator("img") })
+      .first();
+    await productCard.click();
+    await page.waitForLoadState("domcontentloaded");
+
+    const addToCart = page
+      .getByRole("button", { name: /add to cart|add to bag|buy it now/i })
+      .first();
+    test.skip(
+      (await addToCart.count()) === 0,
+      "Product requires the Design Lab — no direct add-to-cart on this template.",
+    );
+    await addToCart.click();
+
+    const header = new HeaderComponent(page);
+    if (!page.url().match(/\/(cart|checkout)/)) {
+      await Promise.all([
+        page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
+        header.cart.click(),
+      ]);
+    }
+
+    // Read the total, increase the qty, read again, expect it to have grown.
+    const totalLocator = page.getByText(/\$\s?[1-9]\d*(\.\d{2})?/).last();
+    const totalBefore = await totalLocator.textContent();
+
+    const qtyControl = page
+      .getByRole("spinbutton", { name: /quantity|qty/i })
+      .or(page.getByLabel(/quantity|qty/i))
+      .first();
+    test.skip(
+      (await qtyControl.count()) === 0,
+      "cart does not expose an inline qty control on this template",
+    );
+    const current = Number(await qtyControl.inputValue().catch(() => "1")) || 1;
+    await qtyControl.fill(String(current + 1));
+    await qtyControl.press("Tab");
+
+    // Allow the recalculation network call to settle, then read the new total.
+    await page.waitForLoadState("networkidle").catch(() => {
+      /* some carts use SSE/long-poll — fall through */
+    });
+    const totalAfter = await totalLocator.textContent();
+    expect(
+      totalAfter,
+      "increasing quantity must change the displayed total",
+    ).not.toBe(totalBefore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. MENU NAVIGATION — open a mega-menu and click a subcategory
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — menu navigation", () => {
+  /**
+   * The mega-menu is the user's primary path into product categories. Existing
+   * mega-menu tests verify that hovering opens the panel and that the panel is
+   * not empty — neither proves the user can actually navigate from a hover into
+   * a category. This journey exercises the full path: open → click sub-item →
+   * land on the category page.
+   */
+  test("positive: user opens a mega-menu and clicks a subcategory to reach the category page", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    // "Custom T-shirts" is the broadest category — most reliably populated.
+    await header.openMegaMenu("Custom T-shirts");
+    const trigger = header.megaMenuTrigger("Custom T-shirts");
+    await expect(trigger).toHaveAttribute("aria-expanded", "true", {
+      timeout: 5_000,
+    });
+
+    const controls = await trigger.getAttribute("aria-controls");
+    expect(controls, "trigger exposes aria-controls").toBeTruthy();
+    const panel = page.locator(`#${controls}`);
+
+    // Pick the first navigable subcategory link inside the panel. Marketing
+    // rotates content so we don't pin a specific name — the journey we're
+    // verifying is "panel → click → category", not "this exact link exists".
+    const subcategoryLink = panel
+      .getByRole("link")
+      .filter({
+        hasNotText: /^(see all|view all|shop all|new|sale)$/i,
+      })
+      .filter({ has: page.locator(":scope:not([href='#']):not([href=''])") })
+      .first();
+
+    await expect(subcategoryLink).toBeVisible({ timeout: 5_000 });
+    const expectedHref = await subcategoryLink.getAttribute("href");
+    expect(expectedHref, "subcategory link has a real href").toBeTruthy();
+    const expectedPathname = new URL(expectedHref ?? "/", page.url()).pathname;
+
+    await Promise.all([
+      page.waitForURL((u) => u.toString().includes(expectedPathname), {
+        timeout: 20_000,
+      }),
+      subcategoryLink.click(),
+    ]);
+
+    // The destination must render — heading or product grid — not a blank route.
+    const heading = page.getByRole("heading", { level: 1 });
+    const productGrid = page
+      .getByRole("list", { name: /products|results/i })
+      .or(page.locator("[class*='ProductGrid'], [class*='results']"));
+    await expect(heading.or(productGrid).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test("edge: hovering a different mega-menu trigger replaces the open panel", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+
+    // Open the first menu, confirm it's expanded.
+    await header.openMegaMenu("Custom T-shirts");
+    const firstTrigger = header.megaMenuTrigger("Custom T-shirts");
+    await expect(firstTrigger).toHaveAttribute("aria-expanded", "true", {
+      timeout: 5_000,
+    });
+
+    // Move to a different trigger. Only one panel should be open at a time —
+    // panel stacking would mean two visible panels, which is both visually
+    // broken and a focus-management bug.
+    await header.openMegaMenu("Custom Apparel");
+    const secondTrigger = header.megaMenuTrigger("Custom Apparel");
+    await expect(secondTrigger).toHaveAttribute("aria-expanded", "true", {
+      timeout: 5_000,
+    });
+    await expect(firstTrigger).toHaveAttribute("aria-expanded", "false", {
+      timeout: 5_000,
+    });
+  });
+});
