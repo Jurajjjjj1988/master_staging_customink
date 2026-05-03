@@ -16,7 +16,7 @@ Today's first run of the initial 26-test draft: 11 passed, 12 failed, 3 skipped 
 
 ## Scope — journeys grouped by user state and auth transition
 
-### Block 1: Anonymous user (9 journeys)
+### Block 1: Anonymous user (11 journeys)
 
 What a user without an account can do. Runs without `storage/auth.json`.
 
@@ -35,7 +35,7 @@ REGISTRATION and LOGIN are anonymous-user journeys (the anonymous user clicks he
 10. **REGISTRATION** — user opens the signup form via the avatar dropdown ("Create An Account") OR via the sign-in page bottom link. Form renders, invalid-email validation works, empty submit blocked. Magic link / email verification step skipped with reason.
 11. **LOGIN** — user opens the sign-in form via the avatar dropdown. Passwordless form renders (email field + "Continue With Email" button + OAuth alternatives + "Create an account" link). Invalid email validation works, empty submit blocked.
 
-### Block 2: Logged-in user (12 journeys)
+### Block 2: Logged-in user (11 journeys)
 
 Auth-gated. Skip with reason when `storage/auth.json` absent. Tests run as soon as `npx playwright codegen --save-storage=storage/auth.json …` produces the state file.
 

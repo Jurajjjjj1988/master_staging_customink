@@ -972,3 +972,37 @@ No gaps; no placeholders; type names (`HEART_NAME`, `EMPTY_FAV_COPY`, `HEART_PRE
 - Tasks 1 and 2 are **interactive** (require human at the browser). Other tasks are pure code. Subagent-driven execution should handle 3–13 cleanly; the human handles 1 and 2 between agent runs.
 - If staging is still 502 in the morning, Task 1 captures whatever it can; gated steps in Tasks 5, 6, 12 fall back to the documented `test.skip` with reason — the suite still ships green for the call, with explicit gaps.
 - Cleanup of redundant tests in `secondary-actions.spec.ts` and `marketing-elements.spec.ts` is **explicitly deferred**. Do not include in this plan.
+
+---
+
+## Execution status (2026-05-03)
+
+Final state after the implementation session:
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| 1. Walk & Watch | ✅ DONE | Captured via Chrome DevTools MCP — sign-in form, sign-up form, /favorites empty state, heart "Add to favorites", header "Favorites" link, Order History → /account/orders. See `docs/walk-and-watch/2026-05-03-customink-dom-observations.md`. |
+| 2. Auth setup | ✅ DONE | `storage/auth.json` produced (86 cookies). `tests/auth.setup.ts` + `setup` + `chromium-desktop-authed` projects wired. |
+| 3. Cluster A — footer wait | ✅ DONE | `waitForFooterReady` added to CALL pos + edge. |
+| 4. Cluster B + D — workers + timeouts | ✅ DONE | Workers reduced 4→2 locally; CHAT timeout 10s→15s; LOGIN goto 60s; logged-in test timeout 90s. |
+| 5. Cluster C-1 — FAVORITES locators | 🟡 PARTIAL | Empty-state copy fixed via Walk & Watch. Heart locator already matches "Add to favorites" (verified). |
+| 6. Cluster C-2 — REGISTRATION locators | ✅ DONE | Submit button "Continue" verified via Walk & Watch. |
+| 7. Cluster E — LOGIN edge scope | ✅ DONE | Submit scoped to `<main>`, regex includes /continue with email/. |
+| 8. LOGIN passwordless rewrite | ✅ DONE | Form-structure assertions; OAuth + Create-an-account checked. |
+| 9. Restructure into 2 describe blocks | ✅ DONE | Anonymous (top of file) + logged-in describe block (auth-gated). |
+| 10. Relocate LOGO → HOME | ✅ DONE | Moved from `tests/render.spec.ts` into anonymous block. |
+| 11. Relocate LOGOUT | ✅ DONE | Moved from `tests/user-state.spec.ts` into logged-in block. POM widened to match anchor / button / menuitem. |
+| 12. Add ACCOUNT MENU + 7 dropdown items | ✅ DONE | All 7 dropdown items have real bodies (not skip-with-TODO). Order History URL pattern updated to /account/orders. |
+| 13. Run + verify | 🔄 IN PROGRESS | Latest verified passes: setup ✓, LOGOUT ✓, Order History ✓. Full-suite morning run pending triage. |
+
+### Bonus skills applied (not in original plan)
+
+- **improve-tests** — findings 1–6 applied (timeouts, scope, RegExp.test, CHAT edge tightening, REGISTRATION promise chains).
+- **check-selectors** — findings H1–H4 applied (accountMenuButton regex, favoritesIcon, headerPhone, removed dead signIn alias).
+- **check-error-handling** — narrowed CART negative goto.catch + dropped misleading count.catch fallback.
+- **quick-code-scan** — renamed throwaway test password from `password123` to `NotARealPassword_TestOnly_2026`.
+
+### Open items
+
+- Cross-domain auth: `storage/auth.json` has cookies only for `www-master`; the `account.staging.customink.com` micro-frontend throws "Oops! Not logged in" pageError — currently allowlisted in `monitorPageHealth`. To genuinely log in across the subdomain, codegen should also visit `account.staging.customink.com` during the manual login.
+- Cleanup of `secondary-actions.spec.ts`, `marketing-elements.spec.ts`, `links.spec.ts` redundancies — explicitly deferred to post-Roman-call.
