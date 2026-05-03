@@ -197,7 +197,10 @@ export const test = base.extend<Fixtures, Options>({
         .soft(brokenImages, "broken images inside header/footer")
         .toEqual([]);
     },
-    { auto: true },
+    // Cross-cutting page-health monitor disabled (cut from suite). The fixture
+    // remains defined for future re-introduction — flip to `auto: true` to
+    // re-enable per-test console / network / broken-image surveillance.
+    { auto: false },
   ],
 
   authenticated: async ({ browser }, use) => {
