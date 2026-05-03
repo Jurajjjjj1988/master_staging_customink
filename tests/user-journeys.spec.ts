@@ -900,6 +900,9 @@ test.describe("logged-in user — header journeys", () => {
     !hasAuthState,
     `Skipping auth-gated journeys: ${AUTH_STATE_PATH} not present (run \`npx playwright codegen --save-storage=${AUTH_STATE_PATH} <staging-url>\` once staging is healthy).`,
   );
+  // Tests start with a 60s page.goto on slow staging; bump test timeout so
+  // the goto can finish before the test-level timeout fires.
+  test.setTimeout(90_000);
 
   // -------------------------------------------------------------------------
   // 11. LOGOUT — Sign Out from My Account dropdown
