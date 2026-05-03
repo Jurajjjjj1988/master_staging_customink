@@ -273,19 +273,15 @@ test.describe("@p1 journey — chat now", () => {
     await expect(chatTrigger).toBeVisible();
     await chatTrigger.click();
 
-    // Walk & Watch on 2026-04-23: LiveChat ships an iframe pre-attached
-    // (about:blank with an "Open LiveChat chat widget" button). The user-
-    // perceivable affordance after clicking "Chat now" is that the chat
-    // window button inside the iframe becomes interactable. Bind to that.
-    // Two iframes match the LiveChat title (chat-widget + chat-widget-
-    // minimized) — scope to the visible one to avoid strict-mode violation.
-    const widget = page
-      .locator('iframe[name="chat-widget"], iframe[title*="LiveChat" i]')
-      .first()
-      .contentFrame();
-    await expect(
-      widget.getByRole("button", { name: /chat/i }).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    // Walk & Watch on 2026-04-24: LiveChat ships TWO iframes — the
+    // pre-attached `chat-widget-minimized` (about:blank, holds the small
+    // launcher) and the actual `iframe#chat-widget` (src=secure.livechatinc.com)
+    // that's display:none until the user clicks Chat Now. The user-
+    // perceivable signal that the widget opened is the chat-widget iframe
+    // becoming visible — no need to reach inside the third-party frame.
+    await expect(page.locator("iframe#chat-widget")).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });
 
@@ -324,11 +320,13 @@ test.describe("@p1 journey — favorites", () => {
     });
     await heart.click();
 
-    // After click the aria-label flips to "Remove from favorites" — that's
-    // the user-perceivable confirmation that the action took effect.
-    await expect(
-      page.locator('[aria-label*="remove from favorite" i]').first(),
-    ).toBeVisible({ timeout: 5_000 });
+    // Walk & Watch on 2026-04-24: same element flips both attributes —
+    // aria-label "Add to favorites" -> "Remove from favorites" AND
+    // aria-pressed "false" -> "true". Bind to the SAME locator we
+    // clicked so a different heart on the page can't false-positive.
+    await expect(heart).toHaveAttribute("aria-pressed", "true", {
+      timeout: 5_000,
+    });
 
     const header = new HeaderComponent(page);
     await expect(header.favorites).toBeVisible({ timeout: 10_000 });

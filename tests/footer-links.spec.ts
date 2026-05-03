@@ -104,10 +104,11 @@ test.describe("@p1 journey — Follow Us social links", () => {
         await expect(link).toHaveAttribute("target", /_blank|new/i);
       } else {
         // Internal (Custom Ink Blog) — click and verify destination.
-        // Normalize trailing slash before comparing — staging serves /blog/
-        // (with slash) for the path data file lists as /blog. waitUntil
-        // explicitly set to domcontentloaded — blog subdomain has long-tail
-        // third-party requests that prevent the "load" event from firing.
+        // Normalize trailing slash + accept redirects to deeper paths.
+        // Staging redirects /blog -> /blog/<featured-article-slug> on
+        // the Follow Us social link path; mirror the footer-links
+        // startsWith tolerance. waitUntil: domcontentloaded — blog has
+        // long-tail third-party that prevents the "load" event firing.
         await Promise.all([
           page.waitForURL(
             (url) => {
@@ -116,7 +117,7 @@ test.describe("@p1 journey — Follow Us social links", () => {
                 "",
               );
               const expected = entry.expectedPath.replace(/\/$/, "");
-              return actual === expected;
+              return actual === expected || actual.startsWith(expected + "/");
             },
             { timeout: 20_000, waitUntil: "domcontentloaded" },
           ),
