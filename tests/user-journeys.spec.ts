@@ -277,6 +277,98 @@ test.describe("@p1 journey — promo banner Shop Sale", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// 4b. CART ICON click from a deep page — primary nav pattern
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — cart icon navigates to cart", () => {
+  test("positive: user clicks the cart icon from a product page and lands on /cart", async ({
+    page,
+  }) => {
+    // From a deep page (not homepage) the cart icon must still navigate.
+    // Catches regressions where cart icon only works on / or breaks
+    // because the header WC re-hydrates with a stale handler.
+    await page.goto("/products/t-shirts/4", { timeout: 60_000 });
+    const header = new HeaderComponent(page);
+    await Promise.all([
+      page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
+      header.cart.click(),
+    ]);
+    // Cart page must render — heading or empty-state copy.
+    await expect(
+      page
+        .getByRole("heading", { name: /cart|order|review|empty/i })
+        .or(page.getByText(/your cart is empty|cart is empty/i))
+        .first(),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4c. MEGA-MENU keyboard close — Escape closes the open panel
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — mega-menu closes on Escape", () => {
+  test("edge: user opens a mega-menu and presses Escape — panel closes", async ({
+    page,
+  }) => {
+    await page.goto("/", { timeout: 60_000 });
+    const header = new HeaderComponent(page);
+
+    await header.openMegaMenu("Custom T-shirts");
+    const trigger = header.megaMenuTrigger("Custom T-shirts");
+    await expect(trigger).toHaveAttribute("aria-expanded", "true", {
+      timeout: 5_000,
+    });
+
+    // Keyboard users dismiss with Escape — accessibility requirement.
+    await page.keyboard.press("Escape");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false", {
+      timeout: 5_000,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4d. SIGN IN form submit via Enter key — keyboard form submission
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — sign-in submits on Enter", () => {
+  test("positive: user types an email and presses Enter — form submits without clicking the button", async ({
+    page,
+  }) => {
+    await page.goto("/profiles/users/sign_in", { timeout: 60_000 });
+
+    const email = page
+      .getByLabel(/enter email address/i)
+      .or(page.getByLabel(/email/i))
+      .first();
+    test.skip(
+      (await email.count()) === 0,
+      "sign-in form not reachable on this deployment",
+    );
+
+    const urlBefore = page.url();
+    await email.fill("typing-then-enter@example.com");
+    await email.press("Enter");
+    await page.waitForLoadState("domcontentloaded");
+
+    // Either the URL changed (advanced to next step) OR a validation
+    // message renders. A silent no-op is the regression to catch — keyboard
+    // users would think the form is broken.
+    const urlChanged = page.url() !== urlBefore;
+    const message = await page
+      .getByText(/check your email|sent|invalid|enter a valid/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    expect(
+      urlChanged || message,
+      "Enter key must trigger something — navigation or visible feedback",
+    ).toBe(true);
+  });
+});
+
 test.describe("@p1 journey — chat now", () => {
   test("positive: clicking Chat Now opens the LiveChat widget", async ({
     page,
@@ -1053,6 +1145,28 @@ test.describe("logged-in user — header journeys", () => {
   // -------------------------------------------------------------------------
   // 11. LOGOUT — Sign Out from My Account dropdown
   // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // 10b. SEARCH (logged-in) — search behaves correctly when authenticated
+  // -------------------------------------------------------------------------
+  test.describe("@p1 journey — search (logged-in)", () => {
+    test("positive: logged-in user submits a search and lands on results that reflect it", async ({
+      page,
+    }) => {
+      // Search may behave differently when authenticated (saved searches,
+      // personalized ranking, account-aware autocomplete). The basic
+      // submit-and-reach-results invariant must hold in both states.
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+
+      await header.submitSearch("hoodie");
+      await page.waitForURL((url) => /hoodie/i.test(url.toString()), {
+        timeout: 15_000,
+      });
+      // Logged-in header must still show the user state (no Sign In link).
+      await expect(header.signInLink).toBeHidden();
+    });
+  });
+
   test.describe("@p1 journey — log out", () => {
     test("positive: logged-in user clicks Sign Out and the header reverts to anonymous state", async ({
       page,
