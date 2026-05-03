@@ -107,45 +107,45 @@ The same conceptual journey can touch header / footer, and behave differently pe
 
 What bug would slip into production if this test didn't exist? Variant column makes happy / failure / boundary paths scannable at a glance.
 
-| Journey                        | Variant  |       State        | Bug-class caught                                      | Asserted via                                                |
-| ------------------------------ | :------: | :----------------: | ----------------------------------------------------- | ----------------------------------------------------------- |
-| FIND                           | **POS**  | Guest<br>Logged-in | Algolia returns 0 hits but route resolves OK          | `productLinks.count() > 2` on `/products/t-shirts/` href    |
-| FIND                           | **NEG**  | Guest<br>Logged-in | Empty submit silently navigates user away             | `page.url()` unchanged after Enter                          |
-| AUTOCOMPLETE                   | **POS**  | Guest<br>Logged-in | Suggestions don't open / keyboard nav broken          | first option visible + `waitForURL` after ArrowDown+Enter   |
-| NO-RESULTS                     | **POS**  | Guest<br>Logged-in | Wrong query silently lands on homepage                | `toHaveURL(NONEXISTENT)` + empty-state copy                 |
-| GET HELP CALL                  | **POS**  | Guest<br>Logged-in | Phone link unclickable / wrong dialer format          | `toHaveAttribute('href', /^tel:.../)` + `toBeEnabled`       |
-| PROMO BANNER                   | **POS**  | Guest<br>Logged-in | Shop Sale CTA dead                                    | `waitForURL` + sale-tagged result visible                   |
-| MENU NAVIGATION (mega-menu)    | **POS**  | Guest<br>Logged-in | Panel renders marketing CTAs only, no real categories | `[href*="/products/"]` filter + URL match                   |
-| MENU NAVIGATION (mega-menu)    | **EDGE** | Guest<br>Logged-in | Two panels open simultaneously (focus-trap bug)       | `aria-expanded` toggle on triggers                          |
-| LOGO → HOME                    | **POS**  | Guest<br>Logged-in | Logo click broken                                     | `page.url()` is `/` after click                             |
-| CART ICON → /cart              | **POS**  |       Guest        | Cart icon dead from a deep page                       | `waitForURL(/\/cart/)` + cart heading visible               |
-| CART (guest)                   | **POS**  |       Guest        | Total shows $0.00 with items                          | `/\$[1-9]\d*/` regex on total                               |
-| CART (guest)                   | **NEG**  |       Guest        | Empty cart silently shows zero items, no copy         | empty-state copy visible on `/cart`                         |
-| CART (guest)                   | **EDGE** |       Guest        | Total stays static when qty changes                   | `textContent` before/after qty `+`                          |
-| CART (persisted)               | **POS**  |     Logged-in      | Server-side cart state lost on reload                 | line item visible after `page.reload()`                     |
-| FAVORITES                      | **POS**  |       Guest        | Heart toggle dead / empty page                        | favorites list / empty-state copy                           |
-| FAVORITES                      | **NEG**  |       Guest        | No empty-state copy for empty favorites               | empty-state text visible                                    |
-| FAVORITES (persisted)          | **POS**  |     Logged-in      | Server-side favorite lost across sessions             | item visible on `/products/favorites` after add             |
-| Header heart icon              | **POS**  |     Logged-in      | Direct path to `/products/favorites` broken           | URL match after click                                       |
-| REGISTRATION                   | **POS**  |       Guest        | Sign-up form ships without proper fields              | email + password + confirm fields visible                   |
-| REGISTRATION                   | **NEG**  |       Guest        | Form ships without invalid-email validation           | submit invalid → validation feedback visible                |
-| REGISTRATION                   | **EDGE** |       Guest        | Empty form submission accepted                        | submit blocked, stays on `/sign_up`                         |
-| LOGIN                          | **POS**  |       Guest        | Form regresses from passwordless to password-based    | "Continue With Email" + OAuth + "Create an account" visible |
-| LOGIN                          | **NEG**  |       Guest        | No invalid-email validation feedback                  | validation feedback visible                                 |
-| LOGIN                          | **EDGE** |       Guest        | Empty submit accepted                                 | stays on `/sign_in`                                         |
-| LOGOUT                         | **POS**  |     Logged-in      | Header doesn't revert to anonymous after sign-out     | `accountMenuButton` hidden + `signInLink` visible           |
-| ACCOUNT DROPDOWN (×4 items)    | **POS**  |     Logged-in      | Dropdown nav items dead                               | each item: click → destination heading visible              |
-| SEARCH (logged-in)             | **POS**  |     Logged-in      | Search behaves differently when authenticated         | results visible + Sign In hidden                            |
-| CHAT NOW                       | **POS**  | Guest<br>Logged-in | LiveChat widget never opens                           | iframe `[title*="LiveChat"]` attached                       |
-| SKIP-LINK (a11y)               | **POS**  | Guest<br>Logged-in | Keyboard users trapped behind header                  | URL contains `#main-content` after Tab+Enter                |
-| FOOTER LINK (×14 normal)       | **POS**  | Guest<br>Logged-in | Link wired to `/foo` but `/foo` is 200-OK custom 404  | heading visible + `not.toHaveText(/page not found\|^404/)`  |
-| FOOTER LINK (×4 auth-required) | **POS**  |       Guest        | Auth-required redirect chain broken                   | `waitForURL(/sign_in/)` + sign-in heading visible           |
-| FOLLOW US (×5 external)        | **POS**  | Guest<br>Logged-in | Wrong destination domain                              | `URL.hostname` contains expected + `target=_blank`          |
-| FOLLOW US (×1 internal Blog)   | **POS**  | Guest<br>Logged-in | Blog destination broken                               | click + destination heading visible                         |
-| RENDER consistency (×5 routes) | **POS**  | Guest<br>Logged-in | Header / footer missing on a primary route            | both visible after each `goto`                              |
-| COOKIE BANNER (first visit)    | **POS**  | Guest<br>Logged-in | Banner missing on first visit                         | banner visible                                              |
-| COOKIE BANNER (acceptance)     | **POS**  | Guest<br>Logged-in | Acceptance lost on reload                             | banner hidden after reload                                  |
-| COOKIE BANNER (settings)       | **POS**  | Guest<br>Logged-in | Settings dialog broken                                | save closes banner                                          |
+| Journey                        | Variant  |       State        | Bug-class caught                                      | Asserted via                                                                                    |
+| ------------------------------ | :------: | :----------------: | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| FIND                           | **POS**  | Guest<br>Logged-in | Algolia returns 0 hits but route resolves OK          | `productLinks.count() > 2` on `/products/t-shirts/` href                                        |
+| FIND                           | **NEG**  | Guest<br>Logged-in | Empty submit silently navigates user away             | `page.url()` unchanged after Enter                                                              |
+| AUTOCOMPLETE                   | **POS**  | Guest<br>Logged-in | Suggestions don't open / keyboard nav broken          | first option visible + `waitForURL` after ArrowDown+Enter                                       |
+| NO-RESULTS                     | **POS**  | Guest<br>Logged-in | Wrong query silently lands on homepage                | `toHaveURL(NONEXISTENT)` + empty-state copy                                                     |
+| GET HELP CALL                  | **POS**  | Guest<br>Logged-in | Phone link unclickable / wrong dialer format          | `toHaveAttribute('href', /^tel:.../)` + `toBeEnabled`                                           |
+| PROMO BANNER                   | **POS**  | Guest<br>Logged-in | Shop Sale CTA dead                                    | `waitForURL` + sale-tagged result visible                                                       |
+| MENU NAVIGATION (mega-menu)    | **POS**  | Guest<br>Logged-in | Panel renders marketing CTAs only, no real categories | `[href*="/products/"]` filter + URL match                                                       |
+| MENU NAVIGATION (mega-menu)    | **EDGE** | Guest<br>Logged-in | Two panels open simultaneously (focus-trap bug)       | `aria-expanded` toggle on triggers                                                              |
+| LOGO → HOME                    | **POS**  | Guest<br>Logged-in | Logo click broken                                     | `page.url()` is `/` after click                                                                 |
+| CART ICON → /cart              | **POS**  |       Guest        | Cart icon dead from a deep page                       | `waitForURL(/\/cart/)` + cart heading visible                                                   |
+| CART (guest)                   | **POS**  |       Guest        | Total shows $0.00 with items                          | `/\$[1-9]\d*/` regex on total                                                                   |
+| CART (guest)                   | **NEG**  |       Guest        | Empty cart silently shows zero items, no copy         | empty-state copy visible on `/cart`                                                             |
+| CART (guest)                   | **EDGE** |       Guest        | Total stays static when qty changes                   | `textContent` before/after qty `+`                                                              |
+| CART (persisted)               | **POS**  |     Logged-in      | Server-side cart state lost on reload                 | line item visible after `page.reload()`                                                         |
+| FAVORITES                      | **POS**  |       Guest        | Heart toggle dead — click doesn't flip pressed-state  | same heart locator: `aria-pressed: false → true` after click                                    |
+| FAVORITES                      | **NEG**  |       Guest        | No empty-state copy for empty favorites               | empty-state text visible                                                                        |
+| FAVORITES (persisted)          | **POS**  |     Logged-in      | Server-side favorite lost across sessions             | item visible on `/products/favorites` after add                                                 |
+| Header heart icon              | **POS**  |     Logged-in      | Direct path to `/products/favorites` broken           | URL match after click                                                                           |
+| REGISTRATION                   | **POS**  |       Guest        | Sign-up form ships without proper fields              | `#user_email` + `#user_password` + `#user_password_confirmation` visible + Continue enabled     |
+| REGISTRATION                   | **NEG**  |       Guest        | Form ships without invalid-email validation           | submit invalid → validation feedback visible                                                    |
+| REGISTRATION                   | **EDGE** |       Guest        | Empty form submission accepted                        | submit blocked, stays on `/sign_up`                                                             |
+| LOGIN                          | **POS**  |       Guest        | Form regresses from passwordless to password-based    | "Continue With Email" + OAuth + "Create an account" visible                                     |
+| LOGIN                          | **NEG**  |       Guest        | No invalid-email validation feedback                  | validation feedback visible                                                                     |
+| LOGIN                          | **EDGE** |       Guest        | Empty submit accepted                                 | stays on `/sign_in`                                                                             |
+| LOGOUT                         | **POS**  |     Logged-in      | Header doesn't revert to anonymous after sign-out     | `accountMenuButton` hidden + `signInLink` visible                                               |
+| ACCOUNT DROPDOWN (×4 items)    | **POS**  |     Logged-in      | Dropdown nav items dead                               | each item: click → destination heading visible                                                  |
+| SEARCH (logged-in)             | **POS**  |     Logged-in      | Search behaves differently when authenticated         | results visible + Sign In hidden                                                                |
+| CHAT NOW                       | **POS**  | Guest<br>Logged-in | LiveChat widget never opens                           | `iframe#chat-widget` becomes visible after click                                                |
+| SKIP-LINK (a11y)               | **POS**  | Guest<br>Logged-in | Keyboard users trapped behind header                  | URL contains `#main-content` after Tab+Enter                                                    |
+| FOOTER LINK (×14 normal)       | **POS**  | Guest<br>Logged-in | Link wired to `/foo` but `/foo` is 200-OK custom 404  | heading visible + `not.toHaveText(/page not found\|^404/)`                                      |
+| FOOTER LINK (×4 auth-required) | **POS**  |       Guest        | Auth-required link wired to wrong destination path    | `getAttribute('href')` matches expected pathname (no click — staging serves 200-OK empty shell) |
+| FOLLOW US (×5 external)        | **POS**  | Guest<br>Logged-in | Wrong destination domain                              | `URL.hostname` contains expected + `target=_blank`                                              |
+| FOLLOW US (×1 internal Blog)   | **POS**  | Guest<br>Logged-in | Blog destination broken                               | click + destination heading visible                                                             |
+| RENDER consistency (×5 routes) | **POS**  | Guest<br>Logged-in | Header / footer missing on a primary route            | both visible after each `goto`                                                                  |
+| COOKIE BANNER (first visit)    | **POS**  | Guest<br>Logged-in | Banner missing on first visit                         | banner visible                                                                                  |
+| COOKIE BANNER (acceptance)     | **POS**  | Guest<br>Logged-in | Acceptance lost on reload                             | banner hidden after reload                                                                      |
+| COOKIE BANNER (settings)       | **POS**  | Guest<br>Logged-in | Settings dialog broken                                | save closes banner                                                                              |
 
 ## Pivot 3 — Test × layer / technique
 
