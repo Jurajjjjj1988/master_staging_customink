@@ -59,9 +59,14 @@ export class HeaderComponent {
         }),
       )
       .or(page.getByRole("link", { name: /^my account$/i }));
+    // The favorites <a> has BOTH accessible name "Favorites" AND
+    // aria-label="Favorites" — `getByRole(...).or(getByLabel(...))` would
+    // resolve to 2 of the same element and trip strict-mode. `.first()`
+    // collapses to the canonical one.
     this.favorites = this.root
       .getByRole("link", { name: /^favorites$/i })
-      .or(this.root.getByLabel(/favorites/i));
+      .or(this.root.getByLabel(/favorites/i))
+      .first();
     this.headerPhone = this.root.locator('a[href^="tel:"]').first();
   }
 
