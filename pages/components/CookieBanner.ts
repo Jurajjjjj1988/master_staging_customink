@@ -14,15 +14,16 @@ export class CookieBanner {
     this.root = page
       .getByRole("region", { name: /cookie banner/i })
       .or(page.locator("#onetrust-banner-sdk"));
-    // Anchor "Accept" to avoid matching "Accept Recommended" inside the settings modal.
+    // CustomInk's OneTrust banner uses "Accept Cookies" / "Reject All" / "Cookie Settings".
+    // Regexes are anchored to avoid matching "Accept Recommended" inside the preference center.
     this.acceptButton = this.root.getByRole("button", {
-      name: /^accept(\s+all(\s+cookies)?)?$/i,
+      name: /^accept(\s+(all|cookies|all\s+cookies))?$/i,
     });
     this.rejectButton = this.root.getByRole("button", {
-      name: /^reject all$/i,
+      name: /^reject(\s+all)?$/i,
     });
     this.settingsButton = this.root.getByRole("button", {
-      name: /^cookie settings$/i,
+      name: /^(cookie\s+)?settings$/i,
     });
   }
 

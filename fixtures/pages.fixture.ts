@@ -7,6 +7,15 @@ type Fixtures = {
 };
 
 /**
+ * Tunable fixture options. `dismissCookie` defaults to `true` so the cookie
+ * banner is gone for every test; cookie-consent tests opt out with
+ * `test.use({ dismissCookie: false })`.
+ */
+type Options = {
+  dismissCookie: boolean;
+};
+
+/**
  * Console messages we tolerate. Justified entries only — every entry has a reason.
  * Keep this list small; growth signals real bugs we should fix instead of silencing.
  */
@@ -62,17 +71,21 @@ const isAllowlistedPageError = (text: string): boolean =>
 const isPlaceholderImage = (src: string): boolean =>
   src === "" || src.endsWith("//:0") || src === "data:,";
 
-export const test = base.extend<Fixtures>({
+export const test = base.extend<Fixtures, Options>({
+  dismissCookie: [true, { option: true }],
+
   cookieDismissed: [
-    async ({ context }, use) => {
-      await context.addCookies([
-        {
-          name: "OptanonAlertBoxClosed",
-          value: new Date().toISOString(),
-          domain: ".staging.customink.com",
-          path: "/",
-        },
-      ]);
+    async ({ context, dismissCookie }, use) => {
+      if (dismissCookie) {
+        await context.addCookies([
+          {
+            name: "OptanonAlertBoxClosed",
+            value: new Date().toISOString(),
+            domain: ".staging.customink.com",
+            path: "/",
+          },
+        ]);
+      }
       await use();
     },
     { auto: true },
