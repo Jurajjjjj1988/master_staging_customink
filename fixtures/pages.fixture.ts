@@ -59,6 +59,11 @@ const PAGE_ERROR_ALLOWLIST: readonly RegExp[] = [
   // renders correctly; the warning is a known dev-time signal that does not
   // affect users. Tracked by the next-frontend-web team.
   /Minified React error #418/,
+  // The `account.staging.customink.com` micro-frontend throws this when our
+  // storage/auth.json has cookies only for the `www-master` host. Until
+  // cross-domain auth setup is in place, the test traverses to the login
+  // page — itself a valid (logged-out) destination.
+  /Oops! It looks like you're not logged in/i,
 ];
 
 const isAllowlistedConsole = (text: string): boolean =>
