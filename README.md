@@ -20,7 +20,7 @@ npm run test:p1
 
 The suite is organised by **user state** because the header chrome differs depending on whether the user is signed in:
 
-| Header chrome | Anonymous user                                                                | Logged-in user                                         |
+| Header chrome | Guest                                                                         | Logged-in                                              |
 | ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Auth control  | "Sign In" link (avatar dropdown opens panel with Sign In + Create An Account) | "My Account" button (dropdown with 9 items + Sign Out) |
 | Heart icon    | not shown in header strip                                                     | visible — direct path to `/products/favorites`         |
@@ -29,7 +29,7 @@ The suite is organised by **user state** because the header chrome differs depen
 
 The same conceptual actions (cart, favorites) behave differently across states; a few exist in only one state. The suite covers both.
 
-**Anonymous user (block 1)** — runs without staging credentials, ~30 tests across 22 journeys:
+**Guest user (block 1)** — runs without staging credentials, ~30 tests across 22 journeys:
 
 - **Search**: FIND, AUTOCOMPLETE, NO-RESULTS, oversized input, Escape closes, special chars, whitespace-only
 - **Help affordances**: GET HELP CALL, CHAT NOW
