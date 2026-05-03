@@ -42,9 +42,18 @@ export class HeaderComponent {
     // Cart label may include a count badge ("Cart (3)") when items exist.
     this.cart = this.root.getByRole("link", { name: /^cart\b/i });
     this.signInLink = this.root.getByRole("link", { name: /^sign in$/i });
-    this.accountMenuButton = this.root.getByRole("button", {
-      name: /^my account$|open\s+(sign in|account|user)\s+menu/i,
-    });
+    // "My Account" may render outside ci-header* (page-level) or as a link
+    // not a button — try button-in-root, button-page-wide, link-page-wide.
+    this.accountMenuButton = this.root
+      .getByRole("button", {
+        name: /^my account$|open\s+(sign in|account|user)\s+menu/i,
+      })
+      .or(
+        page.getByRole("button", {
+          name: /^my account$|open\s+(sign in|account|user)\s+menu/i,
+        }),
+      )
+      .or(page.getByRole("link", { name: /^my account$/i }));
     this.favorites = this.root
       .getByRole("link", { name: /^favorites$/i })
       .or(this.root.getByLabel(/favorites/i));
