@@ -2,6 +2,11 @@
 
 End-to-end tests for the global header and footer of [CustomInk](https://www.customink.com) — the parts of the site that ship on every page. Playwright + TypeScript against staging.
 
+Catches the classes of regression that would slip past unit tests: passwordless-login form drift, server-cart loss across reload, 200-OK custom 404 footer destinations, mega-menu render fallback to condensed mode, Algolia returning 0 hits silently.
+
+> [!TIP]
+> Skip to **Pivot 2** for the bug-class matrix — that's where each test answers _"what bug would slip if I deleted me?"_
+
 ## Quick start
 
 ```bash
@@ -46,6 +51,28 @@ The same conceptual actions (cart, favorites) behave differently across states; 
 - **CART (persisted)** — add, reload, line item survives (bug class guest cart can't catch)
 - **FAVORITES (persisted)** — heart product, navigate to `/products/favorites`, item listed (not empty state)
 - **Header heart icon** — direct path to `/products/favorites` without the dropdown
+
+<details>
+<summary><strong>One representative journey diagram — passwordless LOGIN</strong></summary>
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Header
+  participant SignIn as /sign_in page
+
+  User->>Header: Click "Sign In" link
+  Header->>SignIn: Navigate
+  SignIn-->>User: Render form
+  Note over SignIn: NO password field —<br/>passwordless flow only
+  User->>SignIn: Fill email
+  User->>SignIn: Click "Continue With Email"
+  Note right of User: Or one of:<br/>• Continue with Google<br/>• Continue with Facebook<br/>• "Create an account." → /sign_up
+```
+
+The bug-class this journey catches: regression that re-introduces a password field (and the breach risk that comes with it). See [LOGIN](tests/user-journeys.spec.ts) test for the exact assertions.
+
+</details>
 
 ## Pivot 1 — Journey × state × surface
 
@@ -149,7 +176,16 @@ Once `storage/auth.json` exists (gitignored), the logged-in tests run automatica
 
 ## Architecture
 
-Four short Architecture Decision Records in [`docs/adr/`](docs/adr/README.md):
+### Engineering decisions in 60 seconds
+
+| Decision                                               | Trade-off                                             | Why                                                                                              |
+| ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| POM only for real Web Components, not for pages        | More files; no `BasePage` god-class                   | Page churn doesn't ripple — header/footer are the only stable units across this site             |
+| `page.goto` defaults to `waitUntil: domcontentloaded`  | Per-call override needed when `load` actually matters | Long-tail 3rd-party requests keep `load` from firing — `load` was the dominant fail class        |
+| Auth-required footer links verified by href, not click | Lose the redirect-chain assertion                     | Site doesn't redirect anonymous users on `/account/*` — the click lands on an empty 200-OK shell |
+| Cookie banner dismissed via per-context cookie         | Doesn't exercise the dismiss button itself            | Banner stack would race every other test and 10× the worker-time noise                           |
+
+Four short ADRs in [`docs/adr/`](docs/adr/README.md):
 
 1. POM only for real components, not for pages
 2. Cross-cutting page-health fixture, scope-aware
@@ -177,9 +213,9 @@ The implementation spec is in [`docs/superpowers/specs/`](docs/superpowers/specs
 
 Both workflows use `BASE_URL` from a workflow-level env var — change once, propagates to every shard.
 
-## Site behaviors the suite accommodates
+## Site behaviors the suite handles
 
-This is a real production-style site with real-world behaviors that aren't fully controllable from a test runner. Each is captured in code or data so the suite stays stable as the site evolves:
+Real-world behaviors that aren't controllable from a test runner — captured in code or data so the suite stays stable as the site evolves:
 
 - **Lazy-hydrating Web Components.** `<ci-header-prerender>` (homepage) vs `<ci-header>` (internal pages); `<ci-full-footer>` hydrates below the fold. Shared `waitForFooterReady()` helper anchors footer-asserting tests.
 - **Default `waitUntil: domcontentloaded`.** Long-tail third-party requests (CMS rotation, CORS-blocked production fetches per allowlist, lazy WC) keep the `load` event from ever firing — `domcontentloaded` is the right anchor (overridden in `pages.fixture.ts`).
@@ -189,23 +225,39 @@ This is a real production-style site with real-world behaviors that aren't fully
 - **Algolia keyboard-driven autocomplete.** Tests use `ArrowDown` + `Enter` to mirror the library's intended UX path rather than mouse clicks on suggestion items.
 - **External link rate-limiting.** Facebook and TikTok respond 4xx to non-browser HEAD/GET. For Follow Us social links the suite verifies the destination domain rather than HEAD-probing.
 
+## What a failed test looks like
+
+Every failure produces a video, a screenshot at the failing step, and a full Playwright trace. The trace is the load-bearing artifact — every action and every network response in a single timeline. Open the latest report:
+
+```bash
+npm run test:report   # opens playwright-report/index.html
+```
+
+Inside the trace viewer: click any step in the left timeline to see the DOM snapshot at that moment, the call-stack, the network panel, and the console output side-by-side. This is how the Walk & Watch loop closes — fail → trace → fix → re-run.
+
 ## Open questions
 
 - **OQ-1** Mega-menu render after page reload occasionally falls back to the simplified header. The mega-menu navigation test absorbs this with timeout-tolerant hover.
 - **OQ-2** Authenticated user-state tests skip without a `storage/auth.json` file. They run as soon as one is provided.
 - **OQ-7** OneTrust banner does not implement a strict focus trap on this build. Cookie-consent tests verify the weaker WCAG 2.1.1 keyboard-operable invariant.
 
-## Roadmap
+## Bug-classes this suite would NOT catch
 
-- HEAD-probe cache for external Follow-Us link checks (mitigates rate-limit risk)
-- `@duckduckgo/autoconsent` in place of the hand-rolled OneTrust dismissal cookie
-- `CODEOWNERS`-driven contract diff for marketing-driven path changes (already in `.github/CODEOWNERS`)
+Naming the gaps is a stronger signal than overclaiming coverage. If any of these ship, the suite stays green:
 
-## Possible future additions (currently out of scope)
+- **Visual regression** — pixel-level layout drift, font-fallback flicker, dark-mode contrast loss
+- **Performance budget** — bundle-size growth, LCP regression, render-blocking script additions
+- **Multi-tab session sync** — second tab not reflecting cart / favorites updates from first
+- **Payment provider integration** — Stripe / Apple Pay / PayPal — not exercised; this site routes through a separate checkout app
+- **Cross-browser engine differences** — only Chromium runs; WebKit / Firefox-specific bugs (`-webkit-*` styles, Safari `<input type=date>`) would slip
+- **Real-email signup deliverability** — passwordless magic link actually arriving, not bouncing, not flagged as spam
+- **Concurrent-write race conditions** — two devices adding to the same logged-in cart simultaneously
 
-| Dimension     |    Tests | Cut? | Rationale for re-adding                                                 |
-| ------------- | -------: | ---- | ----------------------------------------------------------------------- |
-| Visual        |        3 | NIE  | Stable region snapshots, low-flake risk, real layout regression catcher |
-| Accessibility |        3 | NIE  | Senior signal, real WCAG bugs catcher                                   |
-| Security      |       ~6 | NIE  | Real CVE / GDPR coverage                                                |
-| Cross-cutting | — (auto) | NIE  | Free bug detection across whole suite                                   |
+## Scoped out (and why)
+
+| Dimension     |    Tests | Rationale for re-adding                                                 |
+| ------------- | -------: | ----------------------------------------------------------------------- |
+| Visual        |        3 | Stable region snapshots, low-flake risk, real layout regression catcher |
+| Accessibility |        3 | Senior signal, real WCAG bugs catcher                                   |
+| Security      |       ~6 | Real CVE / GDPR coverage                                                |
+| Cross-cutting | — (auto) | Free bug detection across whole suite                                   |
