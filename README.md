@@ -16,27 +16,27 @@ npm run check    # typecheck + lint + P1 suite
 ## What's covered
 
 | Section                   | Tests | Coverage in one line                                                                                                                                                |
-| ------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Render & layout**       |     8 | Cross-page consistency (5 pages), logo navigation, 1023/320 breakpoints, footer visual baselines, header bounding-box positioning, LCP budget                       |
-| **Navigation & links**    |   ~20 | Header nav, mega-menus (5 panels + structural + content sanity + critical CTAs), footer sections, follow-us, footer-meta, special protocols, page-wide href hygiene |
-| **Search**                |    11 | Submit, autocomplete open/close, ArrowDown+Enter navigation, empty/oversized inputs, XSS escape, 5 special-character classes                                        |
-| **User state**            |     3 | Logged-out Sign-In link, avatar dropdown (Sign-In + Create An Account), logged-in dropdown + logout                                                                 |
-| **Marketing & support**   |     7 | Promo banner + Shop Sale CTA, phone label + tel:, Chat Now button, Send Email click-through, YouTube embed, Klaviyo container, feedback widget                      |
-| **Cookie consent**        |     5 | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                         |
-| **Accessibility**         |     3 | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                    |
-| **Page quality**          |    13 | Copyright year, SEO `<head>` essentials (×5), duplicate IDs, alt text, button accessible names, JSON-LD validity, robots.txt + sitemap discovery                    |
-| **Helpers (unit)**        |     5 | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                          |
-| **Cross-cutting fixture** |     — | `monitorPageHealth` runs on every test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                            |
+| ------------------------- | -----:| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Render & layout**       | 8     | Cross-page consistency (5 pages), logo navigation, 1023/320 breakpoints, footer visual baselines, header bounding-box positioning, LCP budget                       |
+| **Navigation & links**    | ~20   | Header nav, mega-menus (5 panels + structural + content sanity + critical CTAs), footer sections, follow-us, footer-meta, special protocols, page-wide href hygiene |
+| **Search**                | 11    | Submit, autocomplete open/close, ArrowDown+Enter navigation, empty/oversized inputs, XSS escape, 5 special-character classes                                        |
+| **User state**            | 3     | Logged-out Sign-In link, avatar dropdown (Sign-In + Create An Account), logged-in dropdown + logout                                                                 |
+| **Marketing & support**   | 7     | Promo banner + Shop Sale CTA, phone label + tel:, Chat Now button, Send Email click-through, YouTube embed, Klaviyo container, feedback widget                      |
+| **Cookie consent**        | 5     | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                         |
+| **Accessibility**         | 3     | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                    |
+| **Page quality**          | 13    | Copyright year, SEO `<head>` essentials (×5), duplicate IDs, alt text, button accessible names, JSON-LD validity, robots.txt + sitemap discovery                    |
+| **Helpers (unit)**        | 5     | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                          |
+| **Cross-cutting fixture** | —     | `monitorPageHealth` runs on every test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                            |
 
 **Total: 49 functional scenarios + 1 cross-cutting fixture, 88 P1 tests when expanded across data-driven cases.**
 
 ### By priority
 
 | Priority | Tests | What it gates                                                                                    |
-| -------- | ----: | ------------------------------------------------------------------------------------------------ |
-| P1       |    32 | PR check; deploy blocker. Every linked-revenue path or a11y-baseline test.                       |
-| P2       |    15 | Nightly. Important but not deploy-blocking (autocomplete UX, settings, marketing surfaces).      |
-| P3       |     2 | Nightly only. Visual baselines + LCP budget — informational signals on trend, not gating checks. |
+| -------- | -----:| ------------------------------------------------------------------------------------------------ |
+| P1       | 32    | PR check; deploy blocker. Every linked-revenue path or a11y-baseline test.                       |
+| P2       | 15    | Nightly. Important but not deploy-blocking (autocomplete UX, settings, marketing surfaces).      |
+| P3       | 2     | Nightly only. Visual baselines + LCP budget — informational signals on trend, not gating checks. |
 
 ### By dimension
 
@@ -94,9 +94,9 @@ Browsers configured as Playwright projects: `chromium-desktop` (1440×900), `mob
 Measured locally against staging (M-series Mac, no other load):
 
 | Subset                | Tests | Wall time |
-| --------------------- | ----: | --------: |
-| P1 only               |    88 |   ~1m 30s |
-| Full suite (P1+P2+P3) |  ~106 |   ~1m 50s |
+| --------------------- | -----:| ---------:|
+| P1 only               | 88    | ~1m 30s   |
+| Full suite (P1+P2+P3) | ~106  | ~1m 50s   |
 
 Most of the wall time is network round-trip to staging (lazy-loaded Web Components, third-party scripts). Sharded 4× in CI the P1 suite is well under the 2-minute PR-gate target.
 
@@ -137,6 +137,4 @@ Patterns surveyed against high-quality public Playwright suites and worth incorp
 - Visual baseline review platform (Argos / Percy / Chromatic) for designer signoff workflow
 - `CODEOWNERS`-driven contract diff for marketing-driven path changes (already in `.github/CODEOWNERS`)
 
-## License
-
-[MIT](LICENSE).
+# 
