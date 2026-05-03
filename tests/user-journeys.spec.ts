@@ -342,9 +342,18 @@ test.describe("@p1 journey — footer link click-through", () => {
           item.click(),
         ]);
         // Destination must render — heading or main element.
-        await expect(
-          page.getByRole("heading").or(page.getByRole("main")).first(),
-        ).toBeVisible({ timeout: 10_000 });
+        const heading = page
+          .getByRole("heading")
+          .or(page.getByRole("main"))
+          .first();
+        await expect(heading).toBeVisible({ timeout: 10_000 });
+        // Defense against "wired to /about but /about is a 200-OK custom
+        // 404 page" — the heading must NOT be a not-found marker. Without
+        // this the URL-match alone passes when the page is technically
+        // routed but content-broken.
+        await expect(heading).not.toHaveText(
+          /page not found|^404|not\s+found|page (is )?no longer/i,
+        );
       }
     });
   }
