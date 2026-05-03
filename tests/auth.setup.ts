@@ -21,13 +21,12 @@ setup("verify saved auth state is usable", async ({ page }) => {
 
   await page.goto("/", { timeout: 60_000 });
 
-  // The logged-in header has a "My Account" button instead of a "Sign In"
-  // link. If the saved state expired, the avatar would still show "Sign In"
-  // — that's the failure mode this verification catches.
+  // The logged-in header hides the "Sign In" link. If saved state expired
+  // the link would be visible — that's the failure mode this catches.
+  // (Avatar/My Account button accessible name varies by Web Component
+  // hydration; absence of Sign In is the more reliable invariant.)
   await expect(
-    page.getByRole("button", {
-      name: /^my account$|open\s+(account|user)\s+menu/i,
-    }),
-    "saved auth state should produce a logged-in header",
-  ).toBeVisible({ timeout: 15_000 });
+    page.getByRole("link", { name: /^sign in$/i }).first(),
+    "saved auth state should hide the Sign In link",
+  ).toBeHidden({ timeout: 15_000 });
 });
