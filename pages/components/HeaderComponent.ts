@@ -1,5 +1,10 @@
 import type { Page, Locator } from "@playwright/test";
-import { escapeRegex } from "../../helpers/regex";
+
+// Escape regex metacharacters so a category name like "Custom T-shirts (Pro)"
+// can be safely interpolated into `new RegExp`. Inline (one-line body) keeps
+// the POM self-contained.
+const escapeRegex = (s: string): string =>
+  s.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 export class HeaderComponent {
   /**

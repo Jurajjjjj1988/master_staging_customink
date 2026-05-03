@@ -1,5 +1,10 @@
 import type { Page, Locator } from "@playwright/test";
-import { escapeRegex } from "../../helpers/regex";
+
+// Escape regex metacharacters so a section/link name can be safely
+// interpolated into `new RegExp`. Inline (one-line body) keeps the POM
+// self-contained.
+const escapeRegex = (s: string): string =>
+  s.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 export type FooterSectionName =
   | "About Us"
