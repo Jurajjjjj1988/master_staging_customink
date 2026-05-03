@@ -84,6 +84,22 @@ const isPlaceholderImage = (src: string): boolean =>
 export const test = base.extend<Fixtures, Options>({
   dismissCookie: [true, { option: true, scope: "worker" }],
 
+  /**
+   * Override `page.goto` default `waitUntil` from `"load"` to
+   * `"domcontentloaded"`. The site keeps long-tail third-party requests
+   * open (CMS rotation, CORS-blocked production fetches per allowlist
+   * below, lazy-hydrating Web Components) — `"load"` would wait for ALL
+   * of those to settle, which they never do. DOM is interactive in ~2s;
+   * waiting for "load" was the dominant timeout class in the suite.
+   * Per-call overrides still win — pass `{ waitUntil: "load" }` to opt out.
+   */
+  page: async ({ page }, use) => {
+    const origGoto = page.goto.bind(page);
+    page.goto = (url, options) =>
+      origGoto(url, { waitUntil: "domcontentloaded", ...options });
+    await use(page);
+  },
+
   cookieDismissed: [
     async ({ context, dismissCookie }, use) => {
       if (dismissCookie) {
