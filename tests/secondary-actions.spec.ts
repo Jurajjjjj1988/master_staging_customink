@@ -46,9 +46,10 @@ test.describe("@p1 secondary-actions — header navigation", () => {
       await page.goto("/");
       const header = new HeaderComponent(page);
       const link = action.resolve(header);
-      const href = await link.first().getAttribute("href");
-      expect(href).toBeTruthy();
-      expect(href!).toMatch(action.expectedPathFragment);
+      await expect(link.first()).toHaveAttribute(
+        "href",
+        action.expectedPathFragment,
+      );
     });
   }
 });

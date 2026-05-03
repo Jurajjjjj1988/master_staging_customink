@@ -72,7 +72,7 @@ const isPlaceholderImage = (src: string): boolean =>
   src === "" || src.endsWith("//:0") || src === "data:,";
 
 export const test = base.extend<Fixtures, Options>({
-  dismissCookie: [true, { option: true }],
+  dismissCookie: [true, { option: true, scope: "worker" }],
 
   cookieDismissed: [
     async ({ context, dismissCookie }, use) => {
@@ -195,4 +195,4 @@ export const test = base.extend<Fixtures, Options>({
   },
 });
 
-export { expect } from "@playwright/test";
+export { expect, type Page } from "@playwright/test";

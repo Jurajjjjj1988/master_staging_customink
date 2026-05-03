@@ -1,9 +1,15 @@
 import playwright from "eslint-plugin-playwright";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
     ...playwright.configs["flat/recommended"],
     files: ["tests/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 2022,
+      sourceType: "module",
+    },
     rules: {
       ...playwright.configs["flat/recommended"].rules,
       "playwright/expect-expect": "error",

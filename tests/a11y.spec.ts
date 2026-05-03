@@ -115,43 +115,9 @@ test.describe("@p1 a11y — keyboard navigation", () => {
   });
 });
 
-test.describe("@p2 a11y — cookie banner focus", () => {
-  // Cookie banner must be present for this test.
-  test.use({ dismissCookie: false });
-
-  /**
-   * On staging, the OneTrust banner does NOT implement a strict focus trap —
-   * after a few Tab presses focus escapes into the page beneath. That is a
-   * real WCAG 2.1.2 issue tracked separately (see spec OQ-7). For now this
-   * test verifies the weaker-but-still-meaningful invariant: every banner
-   * action button is reachable via keyboard from the banner's initial focus.
-   */
-  test("should_expose_keyboard_operable_buttons_in_cookie_banner", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    const banner = page
-      .getByRole("region", { name: /cookie banner/i })
-      .or(page.locator("#onetrust-banner-sdk"));
-    await expect(banner).toBeVisible({ timeout: 10_000 });
-
-    /**
-     * WCAG 2.1.1 (Keyboard) requires interactive controls to be operable via
-     * keyboard. We verify each banner action button is visible, enabled, and
-     * not removed from the tab order (`tabindex` is missing or non-negative).
-     * This catches the most common a11y regressions for consent banners.
-     */
-    for (const labelRe of [/^accept/i, /^reject/i, /settings/i]) {
-      const button = banner.getByRole("button", { name: labelRe });
-      await expect(button).toBeVisible();
-      await expect(button).toBeEnabled();
-      const tabIndex = await button.evaluate((el) =>
-        el.getAttribute("tabindex"),
-      );
-      expect(
-        tabIndex === null || Number.parseInt(tabIndex, 10) >= 0,
-        `button matching ${labelRe} has tabindex=${tabIndex}`,
-      ).toBe(true);
-    }
-  });
-});
+/*
+ * Test #18 (cookie banner keyboard operability) lives in cookie-consent.spec.ts.
+ * Worker-scoped fixture options must be set at the top of the file, and that
+ * file already opts out of cookieDismissed for its whole suite — the test
+ * conceptually belongs there as well.
+ */
