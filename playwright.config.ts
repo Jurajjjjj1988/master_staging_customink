@@ -35,6 +35,9 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
       },
+      // Anonymous user state — exclude logged-in journeys (those run on
+      // chromium-desktop-authed with storageState).
+      grepInvert: /logged-in user/,
     },
     {
       // Same as chromium-desktop but with the saved auth state attached and

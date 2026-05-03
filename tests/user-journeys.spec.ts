@@ -328,6 +328,108 @@ test.describe("@p1 journey — chat now", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 5c. FOOTER NAVIGATION — user clicks each footer link and lands somewhere real
+// ---------------------------------------------------------------------------
+//
+// The footer is the user's secondary navigation surface (About, Account,
+// Contact, Service Center). Each link is its own journey: click → arrive
+// on the destination → page renders. Auth-required links (account/*) click
+// through to /profiles/users/sign_in with a return_to back to the protected
+// URL — a journey on its own (the auth-redirect is what the anonymous user
+// actually experiences).
+
+import { FOOTER_LINKS } from "../data/footer-links";
+import { FOLLOW_US_LINKS } from "../data/follow-us-links";
+import { FooterComponent } from "../pages/components/FooterComponent";
+
+test.describe("@p1 journey — footer link click-through", () => {
+  for (const link of FOOTER_LINKS) {
+    test(`positive: user clicks footer ${link.section} > ${link.name} and lands on the right destination`, async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      await waitForFooterReady(page);
+
+      const footer = new FooterComponent(page);
+      const item = footer
+        .section(link.section)
+        .getByRole("link", { name: link.name })
+        .first();
+      await expect(item).toBeVisible({ timeout: 10_000 });
+
+      if (link.skipHttpCheck === "auth-required") {
+        // Auth-protected click: anonymous user is redirected to sign-in
+        // with return_to preserving the protected URL. That redirect IS
+        // the journey for an anonymous click.
+        await Promise.all([
+          page.waitForURL(/\/profiles\/users\/sign_in/, { timeout: 15_000 }),
+          item.click(),
+        ]);
+        await expect(
+          page.getByRole("heading", { name: /^sign in$/i }),
+        ).toBeVisible();
+      } else if (link.skipHttpCheck === "environment-specific") {
+        // Some routes (e.g. Help Center) work in production but are
+        // incomplete on staging. Verify the href targets the right path
+        // without firing a click that would 404.
+        const href = await item.getAttribute("href");
+        const pathname = new URL(href ?? "", page.url()).pathname;
+        expect(pathname).toBe(link.path);
+      } else {
+        // Normal click — must navigate and render real content.
+        await Promise.all([
+          page.waitForURL(
+            (url) => new URL(url.toString()).pathname === link.path,
+            { timeout: 20_000 },
+          ),
+          item.click(),
+        ]);
+        // Destination must render — heading or main element.
+        await expect(
+          page.getByRole("heading").or(page.getByRole("main")).first(),
+        ).toBeVisible({ timeout: 10_000 });
+      }
+    });
+  }
+});
+
+test.describe("@p1 journey — Follow Us social links", () => {
+  for (const entry of FOLLOW_US_LINKS) {
+    test(`positive: user can follow CustomInk on ${entry.name}`, async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      await waitForFooterReady(page);
+
+      const footer = new FooterComponent(page);
+      const link = footer.followUsLink(entry.name);
+      await expect(link).toBeVisible({ timeout: 10_000 });
+
+      if (entry.kind === "external") {
+        // Don't navigate away — verify the destination domain + that the
+        // link opens in a new tab (the user's expected pattern).
+        const href = await link.getAttribute("href");
+        const url = new URL(href ?? "", page.url());
+        expect(url.hostname).toContain(entry.expectedDomain);
+        await expect(link).toHaveAttribute("target", /_blank|new/i);
+      } else {
+        // Internal (Custom Ink Blog) — click and verify destination.
+        await Promise.all([
+          page.waitForURL(
+            (url) => new URL(url.toString()).pathname === entry.expectedPath,
+            { timeout: 20_000 },
+          ),
+          link.click(),
+        ]);
+        await expect(page.getByRole("heading").first()).toBeVisible({
+          timeout: 10_000,
+        });
+      }
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 6. FAVORITES — heart a product, see it on the favorites page
 // ---------------------------------------------------------------------------
 
