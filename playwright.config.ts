@@ -27,6 +27,7 @@ export default defineConfig({
       // describe block in user-journeys.spec.ts handles that case itself.
       name: "setup",
       testMatch: /auth\.setup\.ts/,
+      use: { storageState: "storage/auth.json" },
     },
     {
       name: "chromium-desktop",
