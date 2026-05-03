@@ -96,7 +96,7 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 | `webkit-desktop`   | WebKit             | desktop    | nightly                                             |
 | `prod-smoke`       | Chromium           | 1440 × 900 | manual `npm run test:prod-smoke` against production |
 
-The full catalog — every scenario with the exact assertion, technique, and regression class it catches — is in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
+The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
 
 ## Auth gating
 
@@ -112,14 +112,12 @@ Each journey gets Happy + Negative + Edge variants where they add value. Variant
 
 ## Architecture
 
-The "why" behind the major engineering decisions lives in **[`docs/adr/`](docs/adr/README.md)** — six short Architecture Decision Records:
+The "why" behind the major engineering decisions lives in **[`docs/adr/`](docs/adr/README.md)** — four short Architecture Decision Records:
 
 1. POM only for real components, not for pages
 2. Cross-cutting page-health fixture, scope-aware
 3. Custom-element selector for the header root
 4. Allowlist policy with quarterly hygiene
-5. Visual regression scoped to a single stable region
-6. Baseline pattern for known-offender regression tests
 
 The implementation spec is in [`docs/superpowers/specs/`](docs/superpowers/specs/) and the task-level plan in [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
@@ -145,8 +143,8 @@ Measured locally against staging (M-series Mac):
 | ------------------------------------------ | ------: | --------: | --------------------------------------- |
 | Full suite (anonymous + logged-in)         |       1 |     ~13 m | Stable signal — no staging-load flake   |
 | Full suite (anonymous + logged-in)         |       2 |      ~9 m | Faster but introduces sporadic flake    |
-| Anonymous only (`chromium-desktop`)        |       1 |     ~13 m | 32 / 52 currently passing (workers=1)   |
-| Logged-in only (`chromium-desktop-authed`) |       1 |      ~7 m | Cross-domain auth gap blocks most tests |
+| Anonymous only (`chromium-desktop`)        |       1 |     ~13 m | Pass rate fluctuates with staging load  |
+| Logged-in only (`chromium-desktop-authed`) |       1 |      ~7 m | Cross-domain auth gap blocks some tests |
 
 Most of the wall time is network round-trip to staging (lazy-loaded Web Components, third-party scripts). Sharded 4× in CI the suite hits the ~2-minute PR-gate target.
 

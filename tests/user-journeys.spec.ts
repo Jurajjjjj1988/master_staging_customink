@@ -37,6 +37,18 @@ test.describe("@p1 journey — find / search submit", () => {
     // Beyond the URL: results page must not be a 404 / blank shell.
     await expect(page).toHaveTitle(/.+/);
     await expect(page.locator("body")).toBeVisible();
+
+    // Beyond the page rendering: actual product links to t-shirt items
+    // must appear. Catches the Algolia regression class where the route
+    // resolves OK but the index returns 0 hits — header nav has a single
+    // "/products/t-shirts/4" category link; a real results page renders
+    // many product-detail links.
+    const productLinks = page.locator('a[href*="/products/t-shirts/"]');
+    await expect(productLinks.first()).toBeVisible({ timeout: 10_000 });
+    expect(
+      await productLinks.count(),
+      "results page should render multiple matching products, not just the header nav category link",
+    ).toBeGreaterThan(2);
   });
 
   test("negative: empty submit does not navigate away", async ({ page }) => {
