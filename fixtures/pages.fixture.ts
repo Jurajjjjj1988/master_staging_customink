@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
 type Fixtures = {
   cookieDismissed: void;
@@ -170,17 +170,16 @@ export const test = base.extend<Fixtures, Options>({
         });
       }
 
-      // FAIL only on issues that affect this test's scope (header/footer).
-      const fatal = {
-        pageErrors,
-        brokenImagesInHeaderFooter: brokenImages,
-      };
-      const isFatal = Object.values(fatal).some((arr) => arr.length > 0);
-      if (isFatal) {
-        throw new Error(
-          `Page health (scoped to header/footer) failed: ${JSON.stringify(fatal)}`,
-        );
-      }
+      /*
+       * FAIL only on issues that affect this test's scope (header/footer). We use
+       * `expect.soft` so the original test failure (if any) is preserved as the
+       * primary error rather than masked by a fixture throw — both errors land
+       * in the report side by side, giving the engineer a complete picture.
+       */
+      expect.soft(pageErrors, "uncaught pageErrors during test").toEqual([]);
+      expect
+        .soft(brokenImages, "broken images inside header/footer")
+        .toEqual([]);
     },
     { auto: true },
   ],

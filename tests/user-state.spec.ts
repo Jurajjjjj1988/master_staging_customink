@@ -19,8 +19,8 @@ test.describe("@p1 user-state — logged out", () => {
   test("should_show_signin_link_when_logged_out", async ({ page }) => {
     await page.goto("/");
     const header = new HeaderComponent(page);
-    await expect(header.signIn).toBeVisible();
-    await expect(header.signIn).toHaveAttribute(
+    await expect(header.signInLink).toBeVisible();
+    await expect(header.signInLink).toHaveAttribute(
       "href",
       /\/profiles\/users\/sign_in/,
     );
@@ -43,22 +43,16 @@ test.describe("@p2 user-state — logged in", () => {
     await page.goto("/");
     const header = new HeaderComponent(page);
 
-    await test.step("user dropdown is visible (Sign In is replaced)", async () => {
-      await expect(header.signIn).toBeHidden();
-      const userDropdown = page.getByRole("button", {
-        name: /open .* menu|account|user/i,
-      });
-      await expect(userDropdown.first()).toBeVisible();
+    await test.step("account menu is visible and Sign-In link is replaced", async () => {
+      await expect(header.signInLink).toBeHidden();
+      await expect(header.accountMenuButton.first()).toBeVisible();
     });
 
     await test.step("logout link signs the user out", async () => {
-      const userDropdown = page.getByRole("button", {
-        name: /open .* menu|account|user/i,
-      });
-      await userDropdown.first().click();
+      await header.accountMenuButton.first().click();
       const signOut = page.getByRole("link", { name: /sign out|log out/i });
       await signOut.first().click();
-      await expect(header.signIn).toBeVisible();
+      await expect(header.signInLink).toBeVisible();
     });
   });
 });

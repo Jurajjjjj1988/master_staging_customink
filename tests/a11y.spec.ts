@@ -70,15 +70,11 @@ test.describe("@p1 a11y — keyboard navigation", () => {
       expect(focusedText).toMatch(/skip to main content/i);
     });
 
-    /*
-     * Note: we intentionally do NOT assert what happens when the skip-link is
-     * activated. Sites override the default anchor behavior (scroll-into-view,
-     * focus management, smooth-scroll polyfills) in ways that vary by JS handler.
-     * Test #4 (`should_have_existing_target_for_skip_link`) already verifies the
-     * structural contract — `href="#main-content"` points at an existing element.
-     * The keyboard-operability invariant for #17 is: the skip-link is reachable
-     * AND visible focus styling exists site-wide. Both are checked here.
-     */
+    test.info().annotations.push({
+      type: "spec-deviation",
+      description:
+        "Spec #17 originally asserted: 'Enter on skip-link advances URL hash to #main-content'. CustomInk's skip-link uses a JS handler that prevents the default anchor behavior, so the URL hash never updates on activation (filed as OQ-9). The structural contract is still verified by test #4 (`should_have_existing_target_for_skip_link`). The remaining invariants asserted here are: (a) the skip-link is keyboard-focusable from initial page state, (b) the site defines visible :focus styling for interactive elements site-wide.",
+    });
 
     await test.step("site defines visible :focus styling for interactive elements", async () => {
       // We can't reliably observe `:focus-visible` outline via programmatic focus()

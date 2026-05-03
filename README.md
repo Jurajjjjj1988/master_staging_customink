@@ -141,6 +141,17 @@ The allowlist is an explicit array in `fixtures/pages.fixture.ts`. Adding to it 
 
 If the assertion fails, the test report shows the offending event(s) with full URL and stack — the failing test message itself names which check tripped.
 
+### Quarterly allowlist hygiene
+
+Allowlist entries rot silently — a third-party script gets fixed, removed, or renamed, and the regex sits in the file forever, swallowing future regressions in nearby code. Once per quarter:
+
+1. Skim `CONSOLE_ALLOWLIST`, `REQUEST_ALLOWLIST`, `PAGE_ERROR_ALLOWLIST` in `fixtures/pages.fixture.ts`.
+2. For each entry, read the comment that justifies it. If the original ticket is closed or the third-party noted as removed, comment out the entry and run `npm run test:p1`.
+3. If P1 stays green, delete the entry. If it fails, the noise is real — keep the entry and refresh the comment with the latest reference.
+4. Commit the cleanup separately so the diff is reviewable.
+
+This is the only way the allowlist stays an asset rather than an alibi.
+
 ---
 
 ## Real findings on staging
