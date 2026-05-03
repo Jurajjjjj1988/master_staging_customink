@@ -909,13 +909,14 @@ test.describe("@p1 journey — menu navigation", () => {
     // Pick the first navigable subcategory link inside the panel. Marketing
     // rotates content so we don't pin a specific name — the journey we're
     // verifying is "panel → click → category", not "this exact link exists".
-    // Bind to the URL shape of a real /products/t-shirts/<id> category link,
-    // not "any link in the panel". Catches the regression "panel rendered
-    // marketing CTAs only, no real category links" — without this binding
-    // the test happily clicks Shop Sale and passes.
+    // Bind to /products/ URL shape, not "any link in the panel". Catches
+    // the regression "panel rendered marketing CTAs only, no real category
+    // links" — without this binding the test happily clicks Shop Sale and
+    // passes. Allows sibling subcategories (e.g. /products/funny-tshirts)
+    // not just the canonical /products/t-shirts/<id>.
     const subcategoryLink = panel
       .getByRole("link")
-      .filter({ has: page.locator('[href*="/products/t-shirts/"]') })
+      .filter({ has: page.locator('[href*="/products/"]') })
       .first();
 
     await expect(subcategoryLink).toBeVisible({ timeout: 5_000 });
