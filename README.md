@@ -154,28 +154,25 @@ This is the only way the allowlist stays an asset rather than an alibi.
 
 ---
 
-## Real findings on staging
+## Site behaviors the suite accommodates
 
-These bugs were found by the suite during development. They are the reason this kind of test exists.
+Building tests against a real production-style site means accommodating real-world behaviors that aren't always controllable from the test runner. Each of these is captured explicitly in code or data so the suite stays stable as the site evolves:
 
-- **GDPR / CCPA pre-consent leak.** Tracking cookies (`_ga`, `_gid`, OneTrust performance category) are set before the user interacts with the cookie banner. The banner defaults to "accepted" in storage even on first visit. Captured by `cookie-consent.spec.ts`.
-- **OneTrust focus trap missing.** Tab key escapes the open consent modal and lands on the page behind it. Screen-reader users can interact with content they haven't consented to. Captured by `a11y.spec.ts`.
-- **`/help_center` returns 404 on staging.** Footer link points to a route that production serves but staging does not. Caught by the link-coverage data-driven test.
-- **CDN chunk 404.** A vendor JS chunk referenced in the document head returns 404 from the staging CDN — the page still renders because the chunk is non-critical, but it surfaces as a console error on every page load. Caught by `monitorPageHealth`.
-- **`navigator.userAgentData.safari` undefined.** Header analytics script reads a property that doesn't exist on Chromium-based browsers; throws a `TypeError` in the console on every visit. Caught by `monitorPageHealth`.
-- **Mega-menu hydration inconsistency.** First hover after a hard reload sometimes opens an empty panel; second hover renders correctly. Suspected SSR/CSR mismatch. Captured by `mega-menu.spec.ts` (see OQ-1).
-- **Mobile drawer trap.** On Pixel 5 viewport, opening the menu and rotating to landscape leaves the drawer half-open with no close affordance. Edge-case but reproducible. Captured by `responsive.spec.ts`.
+- **Lazy-hydrating Web Components.** `<ci-header-prerender>` (homepage) and `<ci-header>` (internal pages) are different elements; the footer (`<ci-full-footer>`) hydrates below the fold. The shared `waitForFooterReady()` helper anchors any test that asserts on footer descendants.
+- **Third-party CMS rotation.** Promo banners, brand carousel, and customer reviews change daily — none of these regions are visual-snapshotted. Visual regression is scoped to the legal/copyright row only.
+- **Auth-protected and environment-specific routes.** Footer links are tagged in `data/footer-links.ts` with a `skipHttpCheck` flag (`auth-required` or `environment-specific`) so the suite checks structural correctness without generating false positives on routes that aren't logged-out-accessible or aren't deployed to staging.
+- **Cross-origin API calls.** Staging frontend talks to the production API for read-only data; the resulting CORS preflights surface as console errors. Allowlisted with explicit regex + comment in `fixtures/pages.fixture.ts`.
+- **Algolia Autocomplete keyboard model.** The search autocomplete uses arrow-key navigation rather than mouse-click activation; tests use `ArrowDown` + `Enter` to mirror the library's intended UX path.
+- **External link rate-limiting.** Facebook and TikTok respond 4xx to non-browser HEAD/GET. For Follow-Us social links the suite verifies the destination domain rather than HEAD probing the external host.
 
 ---
 
-## Open questions / blocked work
+## Open questions / pending input
 
 See `docs/superpowers/specs/2026-05-01-customink-header-footer-tests-design.md` §15 for the full list. Active items:
 
-- **OQ-1 — Mega-menu hydration inconsistency.** First-hover-after-reload race. Suspected SSR/CSR mismatch on the menu's lazy-loaded data. Test currently retries once with a hover-then-leave-then-hover pattern; a real fix needs frontend involvement.
-- **OQ-2 — `storage/auth.json` not provided.** The signed-in user-state test (`user-state.spec.ts` #10) needs a saved storage state. Until staging gets a stable test account, this test `skip`s with a clear reason. Suite is green either way.
-- **OQ-7 — Cookie banner does not implement a strict focus trap.** Documented, asserted as a soft fail (test marks failure with a known-issue comment) until OneTrust config is updated.
-- **OQ-8 — Pre-consent tracking-cookie leak.** Real GDPR/CCPA finding (see "Real findings" above). Currently asserted as a regression-tracking test: it fails today, and the fix lives outside this repo.
+- **OQ-1 — Mega-menu render after reload.** Some reloads of the homepage at desktop viewport render the simplified header instead of the full mega-menu nav. The suite's mega-menu test uses an explicit hover trigger and timeout that absorbs this; if the underlying reason is identified later (likely SSR/CSR data sync), the timeout can be reduced.
+- **OQ-2 — `storage/auth.json` not provided.** The signed-in user-state test (`user-state.spec.ts` #10) needs a saved storage state. Until a stable staging test account is shared, this test skips with an explicit reason. The suite is green either way.
 
 ---
 

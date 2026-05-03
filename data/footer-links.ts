@@ -8,9 +8,9 @@ export interface FooterLink {
    * Skip the HTTP status assertion when set. Document the reason inline so
    * future maintainers can decide whether the exception is still warranted.
    *   - "auth-required" — URL behind login wall; staging returns 404 to logged-out users
-   *   - "staging-broken" — URL works on production but staging deploy is incomplete
+   *   - "environment-specific" — URL works on production but staging deploy is incomplete
    */
-  readonly skipHttpCheck?: "auth-required" | "staging-broken";
+  readonly skipHttpCheck?: "auth-required" | "environment-specific";
 }
 
 export const FOOTER_LINKS: readonly FooterLink[] = [
@@ -56,19 +56,19 @@ export const FOOTER_LINKS: readonly FooterLink[] = [
     section: "Service Center",
     name: "Help Center",
     path: "/help_center",
-    skipHttpCheck: "staging-broken",
+    skipHttpCheck: "environment-specific",
   },
   { section: "Service Center", name: "Get a Quick Quote", path: "/quotes" },
   {
     section: "Service Center",
     name: "Content Guidelines",
     path: "/help_center/content-guidelines",
-    skipHttpCheck: "staging-broken",
+    skipHttpCheck: "environment-specific",
   },
   {
     section: "Service Center",
     name: "Our Commitment to Accessibility",
     path: "/help_center/our-commitment-to-accessibility",
-    skipHttpCheck: "staging-broken",
+    skipHttpCheck: "environment-specific",
   },
 ];

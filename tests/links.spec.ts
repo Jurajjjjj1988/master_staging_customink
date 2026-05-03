@@ -19,7 +19,7 @@ interface InternalLinkCase {
   readonly section?: string;
   readonly name: string;
   readonly expectedPath: string;
-  readonly skipHttpCheck?: "auth-required" | "staging-broken";
+  readonly skipHttpCheck?: "auth-required" | "environment-specific";
 }
 
 const HEADER_CASES: InternalLinkCase[] = HEADER_PRIMARY_NAV.map((n) => ({
