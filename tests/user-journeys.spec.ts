@@ -260,7 +260,9 @@ test.describe("@p1 journey — chat now", () => {
     const widget = page.frameLocator(
       'iframe[title*="LiveChat" i], iframe[title*="chat widget" i]',
     );
-    await expect(widget.locator("body")).toBeAttached({ timeout: 10_000 });
+    // 15s instead of 10s — third-party SDK init under parallel test load
+    // benefits from extra headroom; without it CHAT tests flake first.
+    await expect(widget.locator("body")).toBeAttached({ timeout: 15_000 });
   });
 
   test("edge: clicking Chat Now twice does not stack widget instances", async ({
@@ -284,7 +286,10 @@ test.describe("@p1 journey — chat now", () => {
       'iframe[title*="LiveChat" i], iframe[title*="chat widget" i]',
     );
     const count = await iframes.count();
-    expect(count, "exactly one chat widget instance").toBeLessThanOrEqual(1);
+    // Exactly one — passes only when the widget loaded AND didn't double-load.
+    // `≤ 1` alone passes when count = 0, masking a regression where the click
+    // handler stops triggering the SDK.
+    expect(count, "exactly one chat widget instance").toBe(1);
   });
 });
 
@@ -443,9 +448,15 @@ test.describe("@p1 journey — registration", () => {
   test("negative: submitting an invalid email shows a validation message", async ({
     page,
   }) => {
-    await page.goto("/profiles/users/sign_up").catch(async () => {
-      // Some staging deployments use /sign_up as a sub-route; navigate
-      // via the affordance instead if direct goto fails.
+    // Direct goto with a short timeout. If it fails for any reason (404, 502,
+    // or the route doesn't resolve on this deployment), we fall back to the
+    // user-affordance path. We narrow the catch so unexpected errors during
+    // a successful navigation are NOT silently swallowed.
+    const direct = await page
+      .goto("/profiles/users/sign_up", { timeout: 10_000 })
+      .catch(() => null);
+
+    if (!direct?.ok()) {
       await page.goto("/");
       const header = new HeaderComponent(page);
       await header.signInLink.hover();
@@ -454,7 +465,7 @@ test.describe("@p1 journey — registration", () => {
         .first()
         .click();
       await page.waitForLoadState("domcontentloaded");
-    });
+    }
 
     const emailField = page
       .getByLabel(/email/i)
@@ -502,15 +513,14 @@ test.describe("@p1 journey — registration", () => {
   test("edge: submitting an empty form blocks the request and keeps the user on the page", async ({
     page,
   }) => {
-    await page.goto("/").then(async () => {
-      const header = new HeaderComponent(page);
-      await header.signInLink.hover();
-      await page
-        .getByRole("link", { name: /create an account/i })
-        .first()
-        .click();
-      await page.waitForLoadState("domcontentloaded");
-    });
+    await page.goto("/");
+    const header = new HeaderComponent(page);
+    await header.signInLink.hover();
+    await page
+      .getByRole("link", { name: /create an account/i })
+      .first()
+      .click();
+    await page.waitForLoadState("domcontentloaded");
 
     const submit = page
       .getByRole("button", { name: /create.*account|sign up|register/i })
@@ -538,7 +548,10 @@ test.describe("@p1 journey — log in", () => {
   test("positive: user opens sign-in from the avatar and sees a real sign-in form", async ({
     page,
   }) => {
-    await page.goto("/");
+    // Bumped from default 30s — staging occasionally takes longer to first
+    // paint when 4 workers race; this avoids failing the journey for an
+    // infra reason unrelated to the test.
+    await page.goto("/", { timeout: 60_000 });
     const header = new HeaderComponent(page);
 
     await header.signInLink.hover();
@@ -606,8 +619,13 @@ test.describe("@p1 journey — log in", () => {
   }) => {
     await page.goto("/profiles/users/sign_in");
 
+    // Scope to <main> so the locator can't match the header's "Open Sign In
+    // menu" avatar button (whose name also contains "Sign In"). Note: the
+    // passwordless flow uses "Continue With Email" — included in the regex
+    // so this remains correct after the LOGIN passwordless rewrite.
     const submit = page
-      .getByRole("button", { name: /sign in|log in/i })
+      .getByRole("main")
+      .getByRole("button", { name: /continue with email|sign in|log in/i })
       .first();
     test.skip(
       (await submit.count()) === 0,
@@ -659,7 +677,7 @@ test.describe("@p1 journey — cart", () => {
     await addToCart.click();
 
     const header = new HeaderComponent(page);
-    if (!page.url().match(/\/(cart|checkout)/)) {
+    if (!/\/(cart|checkout)/.test(page.url())) {
       await Promise.all([
         page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
         header.cart.click(),
@@ -724,7 +742,7 @@ test.describe("@p1 journey — cart", () => {
     await addToCart.click();
 
     const header = new HeaderComponent(page);
-    if (!page.url().match(/\/(cart|checkout)/)) {
+    if (!/\/(cart|checkout)/.test(page.url())) {
       await Promise.all([
         page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
         header.cart.click(),
@@ -844,6 +862,343 @@ test.describe("@p1 journey — menu navigation", () => {
     });
     await expect(firstTrigger).toHaveAttribute("aria-expanded", "false", {
       timeout: 5_000,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. LOGO → HOME — clicking the logo returns the user to /
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — logo returns home", () => {
+  test("positive: user clicks the logo from a product page and lands on /", async ({
+    page,
+  }) => {
+    await page.goto("/products/t-shirts/4");
+    const header = new HeaderComponent(page);
+    await header.logo.click();
+    await page.waitForURL((url) => new URL(url).pathname === "/", {
+      timeout: 10_000,
+    });
+    expect(new URL(page.url()).pathname).toBe("/");
+  });
+});
+
+// =============================================================================
+// LOGGED-IN USER — header journeys (auth-gated)
+// =============================================================================
+//
+// The header chrome differs in the logged-in state: "Sign In" is replaced by
+// the "My Account" dropdown, a heart icon appears in the header strip, the
+// cart can persist server-side, and favorites surface on /products/favorites.
+// Each item in the My Account dropdown is its own journey — clicking it must
+// take the user to a real, rendered destination. The whole block skips when
+// storage/auth.json is absent (run codegen once staging is healthy).
+
+test.describe("logged-in user — header journeys", () => {
+  test.skip(
+    !hasAuthState,
+    `Skipping auth-gated journeys: ${AUTH_STATE_PATH} not present (run \`npx playwright codegen --save-storage=${AUTH_STATE_PATH} <staging-url>\` once staging is healthy).`,
+  );
+
+  // -------------------------------------------------------------------------
+  // 11. LOGOUT — Sign Out from My Account dropdown
+  // -------------------------------------------------------------------------
+  test.describe("@p1 journey — log out", () => {
+    test("positive: logged-in user clicks Sign Out and the header reverts to anonymous state", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+
+      await expect(header.signInLink).toBeHidden();
+      await expect(header.accountMenuButton.first()).toBeVisible();
+
+      await header.accountMenuButton.first().click();
+      const signOut = page.getByRole("link", { name: /sign out|log out/i });
+      await signOut.first().click();
+
+      await expect(header.signInLink).toBeVisible();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Account dropdown items (12–18) — same shape: open dropdown, click item,
+  // verify navigation to a destination that renders. URL patterns are
+  // best-effort guesses; Walk & Watch will tighten them tomorrow.
+  // -------------------------------------------------------------------------
+
+  test.describe("@p1 journey — account dropdown: Order History", () => {
+    test("positive: user navigates to order history from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page.getByRole("link", { name: /order history/i }).first();
+      await Promise.all([
+        page.waitForURL(/orders|order-history|profiles\/orders/i, {
+          timeout: 15_000,
+        }),
+        item.click(),
+      ]);
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  test.describe("@p1 journey — account dropdown: Account Settings", () => {
+    test("positive: user navigates to account settings from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page
+        .getByRole("link", { name: /account settings/i })
+        .first();
+      await Promise.all([
+        page.waitForURL(/account|settings|profiles\/account/i, {
+          timeout: 15_000,
+        }),
+        item.click(),
+      ]);
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  test.describe("@p2 journey — account dropdown: My Designs", () => {
+    test("positive: user navigates to saved designs from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page.getByRole("link", { name: /my designs/i }).first();
+      await Promise.all([
+        page.waitForURL(/designs|my-designs|profiles\/designs/i, {
+          timeout: 15_000,
+        }),
+        item.click(),
+      ]);
+      // Either a designs grid OR an empty-state — we accept either; the
+      // test ensures the route works and renders content.
+      await expect(page.locator("body")).toBeVisible();
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  test.describe("@p2 journey — account dropdown: My Uploads", () => {
+    test("positive: user navigates to uploads from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page.getByRole("link", { name: /my uploads/i }).first();
+      await Promise.all([
+        page.waitForURL(/uploads|my-uploads|profiles\/uploads/i, {
+          timeout: 15_000,
+        }),
+        item.click(),
+      ]);
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  test.describe("@p2 journey — account dropdown: Group Orders", () => {
+    test("positive: user navigates to group orders from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page.getByRole("link", { name: /group orders/i }).first();
+      await Promise.all([
+        page.waitForURL(/group-orders|group_orders|profiles\/group/i, {
+          timeout: 15_000,
+        }),
+        item.click(),
+      ]);
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  test.describe("@p3 journey — account dropdown: Fundraisers", () => {
+    test("positive: user navigates to fundraisers from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page.getByRole("link", { name: /fundraisers/i }).first();
+      await Promise.all([
+        page.waitForURL(/fundraisers/i, { timeout: 15_000 }),
+        item.click(),
+      ]);
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  test.describe("@p3 journey — account dropdown: Online Stores", () => {
+    test("positive: user navigates to online stores from avatar dropdown", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+      const header = new HeaderComponent(page);
+      await header.accountMenuButton.first().click();
+
+      const item = page.getByRole("link", { name: /online stores/i }).first();
+      await Promise.all([
+        page.waitForURL(/online-stores|stores|profiles\/stores/i, {
+          timeout: 15_000,
+        }),
+        item.click(),
+      ]);
+      await expect(page.getByRole("heading").first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 19. CART (persisted) — differs from anonymous: persists across sessions
+  // -------------------------------------------------------------------------
+  test.describe("@p1 journey — cart (persisted)", () => {
+    test("positive: logged-in user adds a product, reloads, and the cart still contains it", async ({
+      page,
+    }) => {
+      await page.goto("/products/t-shirts/4", { timeout: 60_000 });
+
+      // Land on a product detail page so add-to-cart is reachable
+      const productCard = page
+        .getByRole("link", { name: /.+/ })
+        .filter({ has: page.locator("img") })
+        .first();
+      await expect(productCard).toBeVisible({ timeout: 15_000 });
+      await productCard.click();
+      await page.waitForLoadState("domcontentloaded");
+
+      const addToCart = page
+        .getByRole("button", {
+          name: /add to cart|add to bag|buy it now|order this/i,
+        })
+        .first();
+      // If this product needs Design Lab, the bug class this test targets
+      // (server-side cart persistence) is unreachable from header scope.
+      // We don't skip silently — fail loudly so it's flagged for redesign.
+      await expect(
+        addToCart,
+        "add-to-cart affordance must exist on a logged-in product page",
+      ).toBeVisible({ timeout: 15_000 });
+      await addToCart.click();
+
+      // Navigate to the cart and assert it has the item
+      const header = new HeaderComponent(page);
+      await Promise.all([
+        page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
+        header.cart.click(),
+      ]);
+      const lineItem = page
+        .getByRole("listitem")
+        .or(page.locator("[class*='LineItem'], [class*='CartItem']"))
+        .first();
+      await expect(lineItem).toBeVisible({ timeout: 10_000 });
+
+      // RELOAD — the bug class this test catches: persistence must survive
+      await page.reload();
+      await expect(
+        lineItem,
+        "cart line item must survive a reload when logged in",
+      ).toBeVisible({ timeout: 10_000 });
+      const total = page.getByText(/\$\s?[1-9]\d*(\.\d{2})?/).last();
+      await expect(total).toBeVisible();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 20. FAVORITES (persisted) — differs from anonymous: server-side persistence
+  // -------------------------------------------------------------------------
+  test.describe("@p1 journey — favorites (persisted)", () => {
+    test("positive: logged-in user hearts a product and finds it listed on /products/favorites", async ({
+      page,
+    }) => {
+      await page.goto("/products/t-shirts/4", { timeout: 60_000 });
+
+      const productCard = page
+        .getByRole("link", { name: /.+/ })
+        .filter({ has: page.locator("img") })
+        .first();
+      await expect(productCard).toBeVisible({ timeout: 15_000 });
+      await productCard.click();
+      await page.waitForLoadState("domcontentloaded");
+
+      const heart = page
+        .getByRole("button", {
+          name: /favorite|add to favorites|save (this )?(design|product)/i,
+        })
+        .or(page.getByLabel(/favorite|heart/i))
+        .first();
+      await expect(heart).toBeVisible({ timeout: 15_000 });
+      await heart.click();
+
+      const header = new HeaderComponent(page);
+      await Promise.all([
+        page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
+        header.favorites.click(),
+      ]);
+
+      // For a logged-in user the favorited product must appear in the list,
+      // not the anonymous empty-state.
+      const persistedItem = page
+        .getByRole("listitem")
+        .or(page.locator("[class*='Favorites']"))
+        .first();
+      await expect(
+        persistedItem,
+        "favorited product must persist server-side and appear in /products/favorites",
+      ).toBeVisible({ timeout: 10_000 });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 21. HEART ICON in header — direct path to /products/favorites
+  // -------------------------------------------------------------------------
+  test.describe("@p2 journey — header heart icon", () => {
+    test("positive: logged-in user clicks the heart icon in header and lands on /products/favorites", async ({
+      page,
+    }) => {
+      await page.goto("/", { timeout: 60_000 });
+
+      // The heart icon in the header strip — try common access patterns.
+      const heart = page
+        .getByRole("link", { name: /favorites|saved/i })
+        .or(page.getByLabel(/favorites|saved/i))
+        .first();
+      await expect(heart).toBeVisible({ timeout: 15_000 });
+
+      await Promise.all([
+        page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
+        heart.click(),
+      ]);
+      await expect(page.locator("body")).toBeVisible();
     });
   });
 });

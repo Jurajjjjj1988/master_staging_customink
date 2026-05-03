@@ -35,23 +35,6 @@ test.describe("@p1 render — header & footer cross-page consistency", () => {
   }
 });
 
-/**
- * Test #26 — Logo as a "go home" affordance.
- *
- * The logo's primary purpose is to return the user to the homepage from
- * anywhere in the site. We assert the click actually navigates rather than
- * just verifying the href (covered by the link integrity suite).
- */
-test.describe("@p1 render — logo navigation", () => {
-  test("should_navigate_to_home_when_logo_clicked_from_product_page", async ({
-    page,
-  }) => {
-    await page.goto("/products/t-shirts/4");
-    const header = new HeaderComponent(page);
-    await header.logo.click();
-    await page.waitForURL((url) => new URL(url).pathname === "/", {
-      timeout: 10_000,
-    });
-    expect(new URL(page.url()).pathname).toBe("/");
-  });
-});
+// Logo-as-go-home journey relocated to `tests/user-journeys.spec.ts`
+// ("@p1 journey — logo returns home") so all header user-journeys live in
+// one file as a behavioral spec.

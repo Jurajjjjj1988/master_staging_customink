@@ -8,7 +8,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  // Local: 2 workers — staging gets unhappy under 4 concurrent sessions.
+  // CI: 4 workers (sharded via --shard, so per-shard concurrency is ≤ 4).
+  workers: process.env.CI ? 4 : 2,
   reporter: [["html", { open: "never" }], ["list"], ["github"]],
   use: {
     baseURL: process.env.BASE_URL ?? "https://www-master.staging.customink.com",

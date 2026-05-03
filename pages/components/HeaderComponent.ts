@@ -18,14 +18,20 @@ export class HeaderComponent {
   /** Sign-In link visible to logged-out users; hidden once the user logs in. */
   readonly signInLink: Locator;
   /**
-   * Account dropdown trigger. The Web Component renders this caret button next
-   * to the Sign-In link for logged-out users and as a standalone account menu
-   * for logged-in users.
+   * Account dropdown trigger. Logged-out users see a caret button next to the
+   * Sign-In link with accessible name "Open Sign In menu" (or similar).
+   * Logged-in users see a standalone "My Account" button — observed on
+   * staging 2026-05-03. The regex covers both states.
    */
   readonly accountMenuButton: Locator;
-  /** Backwards-compat alias — prefer `signInLink` for new tests. */
-  readonly signIn: Locator;
+  /** Header favorites link. Anonymous: hidden / Sign-In gated. Logged-in: heart icon in the header strip linking to /products/favorites. */
   readonly favorites: Locator;
+  /**
+   * Header support phone (`tel:` link). Lives in the "Need Help? We've Got You"
+   * support strip when shown — observed on staging 2026-05-03 (e.g. 844-222-8343).
+   * Distinct from the footer phone; CALL edge tests assert both agree on format.
+   */
+  readonly headerPhone: Locator;
 
   constructor(private readonly page: Page) {
     this.root = page.locator("ci-header-prerender, ci-header").first();
@@ -37,10 +43,12 @@ export class HeaderComponent {
     this.cart = this.root.getByRole("link", { name: /^cart\b/i });
     this.signInLink = this.root.getByRole("link", { name: /^sign in$/i });
     this.accountMenuButton = this.root.getByRole("button", {
-      name: /open\s+(sign in|account|user)\s+menu/i,
+      name: /^my account$|open\s+(sign in|account|user)\s+menu/i,
     });
-    this.signIn = this.signInLink;
-    this.favorites = this.root.getByRole("link", { name: /^favorites$/i });
+    this.favorites = this.root
+      .getByRole("link", { name: /^favorites$/i })
+      .or(this.root.getByLabel(/favorites/i));
+    this.headerPhone = this.root.locator('a[href^="tel:"]').first();
   }
 
   /** Locate any header nav link by its accessible name. */
