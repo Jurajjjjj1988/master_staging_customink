@@ -18,7 +18,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     actionTimeout: 10_000,
-    navigationTimeout: 30_000,
+    // Bumped from 30s — staging chrome (lazy-hydrating Web Components +
+    // marketing CMS) routinely takes 30-45s on cold loads; the previous
+    // ceiling was the dominant fail class across the suite.
+    navigationTimeout: 60_000,
   },
   projects: [
     {
