@@ -244,6 +244,39 @@ test.describe("@p1 journey — call support", () => {
 // 5. CHAT NOW — live chat trigger
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// 5b. PROMO BANNER — user clicks "Shop Sale" CTA in announcement strip
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — promo banner Shop Sale", () => {
+  test("positive: user clicks Shop Sale in the promo strip and lands on a sale-tagged listing", async ({
+    page,
+  }) => {
+    await page.goto("/", { timeout: 60_000 });
+
+    // Marketing rotates the promo copy ("15% Off T-shirts…" today, different
+    // tomorrow); the Shop Sale CTA itself is the stable affordance.
+    const shopSale = page.getByRole("link", { name: /shop sale/i }).first();
+    await expect(shopSale).toBeVisible({ timeout: 10_000 });
+
+    await Promise.all([
+      // Sale destinations live under /products/apparel/all-apparel/<id> with
+      // fg-category query params on this deployment; bind to the path family.
+      page.waitForURL(/\/products\/(apparel|all-apparel|sale)/i, {
+        timeout: 20_000,
+      }),
+      shopSale.click(),
+    ]);
+    // Destination must render product results, not a blank shell.
+    await expect(
+      page
+        .getByRole("heading", { level: 1 })
+        .or(page.locator("[class*='ProductGrid'], [class*='results']"))
+        .first(),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+});
+
 test.describe("@p1 journey — chat now", () => {
   test("positive: clicking Chat Now opens the LiveChat widget", async ({
     page,
