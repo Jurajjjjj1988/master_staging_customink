@@ -12,6 +12,10 @@ export default defineConfig({
   // CI: 4 workers (sharded via --shard, so per-shard concurrency is ≤ 4).
   workers: process.env.CI ? 4 : 2,
   reporter: [["html", { open: "never" }], ["list"], ["github"]],
+  // Default test timeout (30s) is shorter than navigationTimeout (60s) —
+  // raise it to 90s so a slow staging cold-load goto + a few subsequent
+  // assertions don't run out of test budget.
+  timeout: 90_000,
   use: {
     baseURL: process.env.BASE_URL ?? "https://www-master.staging.customink.com",
     trace: "on-first-retry",
