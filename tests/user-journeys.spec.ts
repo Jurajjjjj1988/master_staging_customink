@@ -333,10 +333,21 @@ test.describe("@p1 journey — footer link click-through", () => {
         const pathname = new URL(href ?? "", page.url()).pathname;
         expect(pathname).toBe(link.path);
       } else {
-        // Normal click — must navigate and render real content.
+        // Normal click — must navigate and render real content. Use
+        // pathname.startsWith to tolerate trailing-slash and redirect
+        // chains that land on a child path (e.g. /contact -> /contact/us);
+        // strict equality was causing false-fail on every link with a
+        // server-side redirect.
         await Promise.all([
           page.waitForURL(
-            (url) => new URL(url.toString()).pathname === link.path,
+            (url) => {
+              const actual = new URL(url.toString()).pathname.replace(
+                /\/$/,
+                "",
+              );
+              const expected = link.path.replace(/\/$/, "");
+              return actual.startsWith(expected);
+            },
             { timeout: 20_000 },
           ),
           item.click(),
