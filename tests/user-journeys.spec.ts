@@ -945,7 +945,7 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /order history/i }).first();
       await Promise.all([
-        page.waitForURL(/orders|order-history|profiles\/orders/i, {
+        page.waitForURL(/\/account\/orders|orders|order-history/i, {
           timeout: 15_000,
         }),
         item.click(),
