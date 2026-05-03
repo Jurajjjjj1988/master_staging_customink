@@ -102,35 +102,6 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 - **FAVORITES (persisted)** — heart a product, navigate to `/products/favorites`, the product is listed (not the empty state).
 - **Header heart icon** — direct path to `/products/favorites` without going through the dropdown.
 
-### Mutation proof (the suite is not theatre)
-
-`docs/mutation-proof.md` documents a procedure: deliberately break a single line in `pages/components/HeaderComponent.ts`, run the suite, observe the predicted failure list. Every passing test in `tests/user-journeys.spec.ts` depends on a real production-code line you can point at. See the doc for the per-line mutation table.
-
-### Walk & Watch evidence
-
-Real DOM observations captured via Chrome DevTools MCP, recorded in `docs/walk-and-watch/2026-05-03-customink-dom-observations.md`. Notable findings the test code now binds against:
-
-- `/profiles/users/sign_in` is **passwordless** (email + "Continue With Email" + OAuth)
-- `/profiles/users/sign_up` is **password-based** (email + new password + confirm + "Continue" button) — distinct flow
-- `/products/favorites` empty-state copy (verbatim): "Browse our products and click the heart icon to save your favorites."
-- Heart on product detail: `button "Add to favorites"` per colour variant
-- Header heart icon: `link "Favorites"` → `/products/favorites`
-- Order History destination: `/account/orders`
-- Cross-domain note: `account.staging.customink.com` throws "Oops! Not logged in" pageError when `storage/auth.json` has cookies only for `www-master`. Currently allowlisted in `monitorPageHealth`.
-
-### Skills sequence applied
-
-`brainstorming` → `writing-plans` → `improve-tests` → `check-selectors` → `systematic-debugging` → `check-error-handling` → `quick-code-scan` → `real-testing-patterns` (final mutation-test pass). Each skill produced concrete fixes traceable in commits. Spec at `docs/superpowers/specs/2026-05-03-customink-header-user-journeys-redesign-design.md`, plan at `docs/superpowers/plans/2026-05-03-customink-header-user-journeys-redesign.md`.
-
-### Run status (2026-05-03)
-
-Last `--workers=1` runs:
-
-- **Anonymous (`chromium-desktop`)**: 32 passed / 16 failed / 4 skipped (52 total). Failures cluster on staging-flake (Customer Reviews / Customer Photos / Custom Ink Blog footer items) and a couple of locator-tighten candidates surfaced by the latest skill passes.
-- **Logged-in (`chromium-desktop-authed`)**: 1 passed (setup) / 11 failed (12 total). Failures cluster on the cross-domain auth gap — the saved `storage/auth.json` has cookies for `www-master` only; clicking dropdown items reaches `account.staging.customink.com` which renders the not-logged-in state. Resolution requires running `playwright codegen` against both subdomains.
-
-`--workers=2` cuts wall-time to ~9 minutes but introduces staging-load flakiness; for stable signal use `--workers=1` (~13 minutes).
-
 ### Auth gating
 
 Logged-in tests check `existsSync("storage/auth.json")` at file load. Without it the whole `describe("logged-in user — header journeys", ...)` block skips with the message:
