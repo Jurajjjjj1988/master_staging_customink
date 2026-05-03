@@ -13,51 +13,7 @@ cp .env.example .env
 npm run check    # typecheck + lint + P1 suite
 ```
 
-## What's covered
-
-| Section                       | File                               | Tests | Coverage in one line                                                                                                                                                                                                                                                                                                                                                                            |
-| ----------------------------- | ---------------------------------- | ----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **User journeys (anonymous)** | `tests/user-journeys.spec.ts`      |   ~30 | Search (FIND, AUTOCOMPLETE, no-results), call support, chat now, promo banner Shop Sale, menu navigation, logo → home, cart (guest + icon click), favorites anonymous, registration (form + invalid email + empty submit), login (passwordless form + invalid email + empty submit), footer link click-through (16 links incl. auth-redirect for /account/\*), Follow Us (6 socials), skip-link |
-| **User journeys (logged-in)** | `tests/user-journeys.spec.ts`      |     9 | LOGOUT, search logged-in, 4 My-Account dropdown items (Order History, Account Settings, My Designs, My Uploads), CART persisted, FAVORITES persisted, header heart icon — gated on `storage/auth.json`                                                                                                                                                                                          |
-| **Search depth**              | `tests/search.spec.ts`             |     5 | Submit, autocomplete open/close, ArrowDown+Enter, empty/oversized inputs                                                                                                                                                                                                                                                                                                                        |
-| **Cookie consent**            | `tests/cookie-consent.spec.ts`     |     3 | First-visit banner, accept persistence, settings save                                                                                                                                                                                                                                                                                                                                           |
-| **Render**                    | `tests/render.spec.ts`             |     5 | Cross-page consistency — header + footer render on every primary route                                                                                                                                                                                                                                                                                                                          |
-| **Responsive**                | `tests/responsive.spec.ts`         |     2 | 1023 / 320 breakpoints — secondary actions stay reachable; mega-menu collapses                                                                                                                                                                                                                                                                                                                  |
-| **Regression baselines**      | `tests/regression.spec.ts`         |     3 | Known-offender baselines                                                                                                                                                                                                                                                                                                                                                                        |
-| **User-state baseline**       | `tests/user-state.spec.ts`         |     2 | Anonymous Sign-In link visibility + avatar hover dropdown structure                                                                                                                                                                                                                                                                                                                             |
-| **Footer marketing**          | `tests/marketing-elements.spec.ts` |     2 | YouTube embed loads on play click + Send-Us-Email click-through to /contact                                                                                                                                                                                                                                                                                                                     |
-| **Auth setup**                | `tests/auth.setup.ts`              |     1 | Verifies `storage/auth.json` is still usable before logged-in tests run                                                                                                                                                                                                                                                                                                                         |
-| **Helpers (unit)**            | `tests/_unit/`                     |     5 | `escapeRegex` helper — unit tests for the regex-escaping function used in every name-regex selector                                                                                                                                                                                                                                                                                             |
-
-**Total: ~67 tests across the suite (single browser project).** Auth-gated logged-in journeys skip without `storage/auth.json`. Run sharded across browsers in CI.
-
-### By priority
-
-| Priority | Tests | What it gates                                                                                                                                  |
-| -------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1       |   ~70 | PR check; deploy blocker. Every revenue-path user journey (cart, login, registration, search, footer links) + a11y-baseline.                   |
-| P2       |   ~15 | Nightly. Important but not deploy-blocking (autocomplete UX, mega-menu Escape, account dropdown items My Designs / My Uploads / Group Orders). |
-| P3       |    ~3 | Nightly only. Visual baselines + low-priority dropdown items (Fundraisers, Online Stores) — informational signals on trend, not gating.        |
-
-### By dimension
-
-| Dimension  | Coverage source                                                                                                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Functional | `user-journeys.spec.ts` (~30 anon + 9 logged-in journeys), `search.spec.ts` (oversized inputs, autocomplete UX), `regression.spec.ts` (no empty/`javascript:` hrefs, copyright year) |
-
-### By Playwright project
-
-| Project            | Browser            | Viewport   | When it runs                                        |
-| ------------------ | ------------------ | ---------- | --------------------------------------------------- |
-| `chromium-desktop` | Chromium           | 1440 × 900 | PR + nightly                                        |
-| `mobile-chrome`    | Chromium (Pixel 5) | mobile     | PR + nightly                                        |
-| `mobile-safari`    | WebKit (iPhone 13) | mobile     | nightly                                             |
-| `webkit-desktop`   | WebKit             | desktop    | nightly                                             |
-| `prod-smoke`       | Chromium           | 1440 × 900 | manual `npm run test:prod-smoke` against production |
-
-The full catalog — every scenario with the exact assertion, technique, and regression class it catches — is in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
-
-## User journey suite (`tests/user-journeys.spec.ts`)
+## What we test per state
 
 The suite is organised by **user state** because the header chrome differs depending on whether the user is signed in:
 
@@ -70,9 +26,7 @@ The suite is organised by **user state** because the header chrome differs depen
 
 This means the same conceptual actions (cart, favorites) behave differently across states, and a few actions exist in only one state. The suite covers both.
 
-### What we test per state
-
-**Anonymous user (block 1)** — runs without staging credentials. ~52 tests across 22 journeys:
+**Anonymous user (block 1)** — runs without staging credentials. ~30 tests across 22 journeys:
 
 - **Search**: FIND (submit + reach results), AUTOCOMPLETE (ArrowDown + Enter), NO-RESULTS (empty state, not silent homepage), 1000-char input, Escape closes, special chars, whitespace-only
 - **Help affordances**: GET HELP CALL (tel: format dialable, multi-link agreement), CHAT NOW (widget loads, no double-stack)
@@ -86,7 +40,7 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 - **Marketing**: YouTube embed loads on play click; Send-Us-Email click-through to /contact (kept in `marketing-elements.spec.ts`)
 - **Accessibility**: SKIP-LINK (keyboard-only users tab to first focusable element, press Enter, jump past header to #main-content)
 
-**Logged-in user (block 2)** — gated on `storage/auth.json`; skipped with a clear reason when it's absent. 12 journeys:
+**Logged-in user (block 2)** — gated on `storage/auth.json`; skipped with a clear reason when it's absent. 9 journeys:
 
 - **LOGOUT** — click Sign Out, the header reverts to anonymous state (uses widened assertion to tolerate the cross-domain redirect chain)
 - **SEARCH (logged-in)** — search behaves correctly when authenticated, header still hides Sign In link
@@ -95,16 +49,56 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 - **FAVORITES (persisted)** — heart a product, navigate to `/products/favorites`, the product is listed (not the empty state).
 - **Header heart icon** — direct path to `/products/favorites` without going through the dropdown.
 
-### By chrome surface (header vs footer)
+## By chrome surface (header vs footer)
 
-| Surface                   | Tests | Examples                                                                                                                                                                                                                           |
-| ------------------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Header**                |   ~50 | Search, autocomplete, mega-menu open + Escape, logo, cart icon, registration (2 entries), login, account dropdown (7 items + LOGOUT), header heart, skip-link                                                                      |
-| **Footer**                |   ~24 | All About Us / Your Account (auth-redirect) / Contact / Service Center links, Follow Us socials (5 external + Blog), YouTube embed, Send-Us-Email                                                                                  |
-| **Header AND footer**     |    ~7 | axe-core scans (header + footer separately), cross-page render consistency (both must appear on every primary route), visual snapshots of stable footer rows                                                                       |
-| **Cross-cutting / other** |   ~17 | Cookie consent banner (5), helpers unit tests (5), regression baselines (3) — no empty/`javascript:` hrefs, structurally valid hrefs, copyright year, auth.setup (1), responsive breakpoints (2), `monitorPageHealth` auto-fixture |
+| Surface                   | Tests | Examples                                                                                                                                                      |
+| ------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**                |   ~50 | Search, autocomplete, mega-menu open + Escape, logo, cart icon, registration (2 entries), login, account dropdown (7 items + LOGOUT), header heart, skip-link |
+| **Footer**                |   ~24 | All About Us / Your Account (auth-redirect) / Contact / Service Center links, Follow Us socials (5 external + Blog), YouTube embed, Send-Us-Email             |
+| **Header AND footer**     |    ~5 | Cross-page render consistency — both must appear on every primary route                                                                                       |
+| **Cross-cutting / other** |    ~4 | Cookie consent banner (3), auth.setup (1)                                                                                                                     |
 
-### Auth gating
+## What's covered
+
+| Section                       | File                               | Tests | Coverage in one line                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------- | ---------------------------------- | ----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User journeys (anonymous)** | `tests/user-journeys.spec.ts`      |   ~30 | Search (FIND, AUTOCOMPLETE, no-results), call support, chat now, promo banner Shop Sale, menu navigation, logo → home, cart (guest + icon click), favorites anonymous, registration (form + invalid email + empty submit), login (passwordless form + invalid email + empty submit), footer link click-through (16 links incl. auth-redirect for /account/\*), Follow Us (6 socials), skip-link |
+| **User journeys (logged-in)** | `tests/user-journeys.spec.ts`      |     9 | LOGOUT, search logged-in, 4 My-Account dropdown items (Order History, Account Settings, My Designs, My Uploads), CART persisted, FAVORITES persisted, header heart icon — gated on `storage/auth.json`                                                                                                                                                                                          |
+| **Search depth**              | `tests/search.spec.ts`             |     5 | Submit, autocomplete open/close, ArrowDown+Enter, empty/oversized inputs                                                                                                                                                                                                                                                                                                                        |
+| **User-state baseline**       | `tests/user-state.spec.ts`         |     2 | Anonymous Sign-In link visibility + avatar hover dropdown structure                                                                                                                                                                                                                                                                                                                             |
+| **Footer marketing**          | `tests/marketing-elements.spec.ts` |     2 | YouTube embed loads on play click + Send-Us-Email click-through to /contact                                                                                                                                                                                                                                                                                                                     |
+| **Auth setup**                | `tests/auth.setup.ts`              |     1 | Verifies `storage/auth.json` is still usable before logged-in tests run                                                                                                                                                                                                                                                                                                                         |
+| **Render**                    | `tests/render.spec.ts`             |     5 | Cross-page consistency — header + footer render on every primary route                                                                                                                                                                                                                                                                                                                          |
+| **Cookie consent**            | `tests/cookie-consent.spec.ts`     |     3 | First-visit banner, accept persistence, settings save                                                                                                                                                                                                                                                                                                                                           |
+
+**Total: ~57 tests across the suite (single browser project).** Auth-gated logged-in journeys skip without `storage/auth.json`. Run sharded across browsers in CI.
+
+### By priority
+
+| Priority | Tests | What it gates                                                                                                                                  |
+| -------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1       |   ~45 | PR check; deploy blocker. Every revenue-path user journey (cart, login, registration, search, footer links).                                   |
+| P2       |   ~12 | Nightly. Important but not deploy-blocking (autocomplete UX, mega-menu Escape, account dropdown items My Designs / My Uploads / Group Orders). |
+
+### By dimension
+
+| Dimension  | Coverage source                                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| Functional | `user-journeys.spec.ts` (~30 anon + 9 logged-in journeys), `search.spec.ts` (oversized inputs, autocomplete UX) |
+
+### By Playwright project
+
+| Project            | Browser            | Viewport   | When it runs                                        |
+| ------------------ | ------------------ | ---------- | --------------------------------------------------- |
+| `chromium-desktop` | Chromium           | 1440 × 900 | PR + nightly                                        |
+| `mobile-chrome`    | Chromium (Pixel 5) | mobile     | PR + nightly                                        |
+| `mobile-safari`    | WebKit (iPhone 13) | mobile     | nightly                                             |
+| `webkit-desktop`   | WebKit             | desktop    | nightly                                             |
+| `prod-smoke`       | Chromium           | 1440 × 900 | manual `npm run test:prod-smoke` against production |
+
+The full catalog — every scenario with the exact assertion, technique, and regression class it catches — is in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
+
+## Auth gating
 
 Logged-in tests check `existsSync("storage/auth.json")` at file load. Without it the whole `describe("logged-in user — header journeys", ...)` block skips with the message:
 
@@ -112,7 +106,7 @@ Logged-in tests check `existsSync("storage/auth.json")` at file load. Without it
 
 Once `storage/auth.json` exists (committed only locally; gitignored), the logged-in tests run automatically.
 
-### Variant policy
+## Variant policy
 
 Each journey gets Happy + Negative + Edge variants where they add value. Variants that would not catch a real failure mode (e.g. a "negative" path for clicking the logo) are deliberately omitted, not padded.
 
@@ -168,7 +162,7 @@ Both workflows use `BASE_URL` from a workflow-level env var — change once, pro
 This is a real production-style site with real-world behaviors that aren't fully controllable from a test runner. Each is captured in code or data so the suite stays stable as the site evolves:
 
 - **Lazy-hydrating Web Components.** `<ci-header-prerender>` (homepage) vs `<ci-header>` (internal pages); the footer (`<ci-full-footer>`) hydrates below the fold. The shared `waitForFooterReady()` helper anchors any test that asserts on footer descendants.
-- **Third-party CMS rotation.** Promo banner copy, brand carousel, customer reviews — none of these regions are visual-snapshotted. Visual regression is scoped to the legal/copyright row only (ADR-005).
+- **Third-party CMS rotation.** Promo banner copy, brand carousel, customer reviews — content-asserting tests bind to invariants (the affordance, the destination URL), not the rotated copy itself.
 - **Auth-protected and environment-specific routes.** Footer links carry a `skipHttpCheck` flag (`auth-required` for `/account/*`, `environment-specific` for routes incomplete on staging) so the suite checks structural correctness without false positives.
 - **Cross-origin API calls.** Staging frontend talks to production for read-only data; the resulting CORS errors are allowlisted with explicit comments per entry (ADR-004).
 - **Algolia keyboard-driven autocomplete.** Tests use `ArrowDown` + `Enter` to mirror the library's intended UX path rather than mouse clicks on suggestion items.
@@ -186,11 +180,8 @@ A handful of items are deliberately deferred — see spec [§15](docs/superpower
 
 Patterns surveyed against high-quality public Playwright suites and worth incorporating in future iterations:
 
-- `axeBuilder` fixture refactor (in progress — see `fixtures/axe.fixture.ts`)
 - HEAD-probe cache for external Follow-Us link checks (mitigates rate-limit risk)
 - `@duckduckgo/autoconsent` in place of the hand-rolled OneTrust dismissal cookie
-- Pre-consent network audit (consentcrawl pattern) to validate analytics blocking before consent
-- Visual baseline review platform (Argos / Percy / Chromatic) for designer signoff workflow
 - `CODEOWNERS`-driven contract diff for marketing-driven path changes (already in `.github/CODEOWNERS`)
 
 ## Possible future additions (currently out of scope)

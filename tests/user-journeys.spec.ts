@@ -212,6 +212,7 @@ test.describe("@p1 journey — cart icon navigates to cart", () => {
     // because the header WC re-hydrates with a stale handler.
     await page.goto("/products/t-shirts/4", { timeout: 60_000 });
     const header = new HeaderComponent(page);
+    await expect(header.cart).toBeVisible({ timeout: 10_000 });
     await Promise.all([
       page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
       header.cart.click(),
@@ -420,6 +421,7 @@ test.describe("@p1 journey — favorites", () => {
     ).toBe(true);
 
     const header = new HeaderComponent(page);
+    await expect(header.favorites).toBeVisible({ timeout: 10_000 });
     await Promise.all([
       page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
       header.favorites.click(),
@@ -446,6 +448,7 @@ test.describe("@p1 journey — favorites", () => {
     // empty state, not crash or show stale data.
     await page.goto("/");
     const header = new HeaderComponent(page);
+    await expect(header.favorites).toBeVisible({ timeout: 10_000 });
 
     await Promise.all([
       page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
@@ -745,6 +748,7 @@ test.describe("@p1 journey — cart", () => {
 
     const header = new HeaderComponent(page);
     if (!/\/(cart|checkout)/.test(page.url())) {
+      await expect(header.cart).toBeVisible({ timeout: 10_000 });
       await Promise.all([
         page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
         header.cart.click(),
@@ -781,6 +785,7 @@ test.describe("@p1 journey — cart", () => {
     if (!direct?.ok()) {
       await page.goto("/");
       const header = new HeaderComponent(page);
+      await expect(header.cart).toBeVisible({ timeout: 10_000 });
       await header.cart.click();
       await page.waitForLoadState("domcontentloaded");
     }
@@ -816,6 +821,7 @@ test.describe("@p1 journey — cart", () => {
 
     const header = new HeaderComponent(page);
     if (!/\/(cart|checkout)/.test(page.url())) {
+      await expect(header.cart).toBeVisible({ timeout: 10_000 });
       await Promise.all([
         page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
         header.cart.click(),
@@ -950,6 +956,7 @@ test.describe("@p1 journey — logo returns home", () => {
   }) => {
     await page.goto("/products/t-shirts/4", { timeout: 60_000 });
     const header = new HeaderComponent(page);
+    await expect(header.logo).toBeVisible({ timeout: 10_000 });
     await header.logo.click();
     await page.waitForURL((url) => new URL(url).pathname === "/", {
       timeout: 10_000,
@@ -1044,6 +1051,9 @@ test.describe("logged-in user — header journeys", () => {
     }) => {
       await page.goto("/", { timeout: 60_000 });
       const header = new HeaderComponent(page);
+      await expect(header.accountMenuButton.first()).toBeVisible({
+        timeout: 10_000,
+      });
       await header.accountMenuButton.first().click();
 
       const item = page.getByRole("link", { name: /order history/i }).first();
@@ -1067,6 +1077,9 @@ test.describe("logged-in user — header journeys", () => {
     }) => {
       await page.goto("/", { timeout: 60_000 });
       const header = new HeaderComponent(page);
+      await expect(header.accountMenuButton.first()).toBeVisible({
+        timeout: 10_000,
+      });
       await header.accountMenuButton.first().click();
 
       const item = page
@@ -1092,6 +1105,9 @@ test.describe("logged-in user — header journeys", () => {
     }) => {
       await page.goto("/", { timeout: 60_000 });
       const header = new HeaderComponent(page);
+      await expect(header.accountMenuButton.first()).toBeVisible({
+        timeout: 10_000,
+      });
       await header.accountMenuButton.first().click();
 
       const item = page.getByRole("link", { name: /my designs/i }).first();
@@ -1118,6 +1134,9 @@ test.describe("logged-in user — header journeys", () => {
     }) => {
       await page.goto("/", { timeout: 60_000 });
       const header = new HeaderComponent(page);
+      await expect(header.accountMenuButton.first()).toBeVisible({
+        timeout: 10_000,
+      });
       await header.accountMenuButton.first().click();
 
       const item = page.getByRole("link", { name: /my uploads/i }).first();
@@ -1172,6 +1191,7 @@ test.describe("logged-in user — header journeys", () => {
 
       // Navigate to the cart and assert it has the item
       const header = new HeaderComponent(page);
+      await expect(header.cart).toBeVisible({ timeout: 10_000 });
       await Promise.all([
         page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
         header.cart.click(),
@@ -1221,6 +1241,7 @@ test.describe("logged-in user — header journeys", () => {
       await heart.click();
 
       const header = new HeaderComponent(page);
+      await expect(header.favorites).toBeVisible({ timeout: 10_000 });
       await Promise.all([
         page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
         header.favorites.click(),
