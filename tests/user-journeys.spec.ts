@@ -819,12 +819,13 @@ test.describe("@p1 journey — menu navigation", () => {
     // Pick the first navigable subcategory link inside the panel. Marketing
     // rotates content so we don't pin a specific name — the journey we're
     // verifying is "panel → click → category", not "this exact link exists".
+    // Bind to the URL shape of a real /products/t-shirts/<id> category link,
+    // not "any link in the panel". Catches the regression "panel rendered
+    // marketing CTAs only, no real category links" — without this binding
+    // the test happily clicks Shop Sale and passes.
     const subcategoryLink = panel
       .getByRole("link")
-      .filter({
-        hasNotText: /^(see all|view all|shop all|new|sale)$/i,
-      })
-      .filter({ has: page.locator(":scope:not([href='#']):not([href=''])") })
+      .filter({ has: page.locator('[href*="/products/t-shirts/"]') })
       .first();
 
     await expect(subcategoryLink).toBeVisible({ timeout: 5_000 });
@@ -954,14 +955,16 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /order history/i }).first();
       await Promise.all([
-        page.waitForURL(/\/account\/orders|orders|order-history/i, {
-          timeout: 15_000,
-        }),
+        page.waitForURL(/\/account\/orders/i, { timeout: 15_000 }),
         item.click(),
       ]);
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      // Bind to the destination's distinguishing heading — passes only when
+      // we landed on the actual orders page, not any /account/* sibling.
+      await expect(
+        page.getByRole("heading", {
+          name: /order history|your orders|my orders/i,
+        }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -977,14 +980,16 @@ test.describe("logged-in user — header journeys", () => {
         .getByRole("link", { name: /account settings/i })
         .first();
       await Promise.all([
-        page.waitForURL(/account|settings|profiles\/account/i, {
+        page.waitForURL(/\/account\/settings|\/profiles\/account\/edit/i, {
           timeout: 15_000,
         }),
         item.click(),
       ]);
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.getByRole("heading", {
+          name: /account settings|your account|profile/i,
+        }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -998,17 +1003,19 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /my designs/i }).first();
       await Promise.all([
-        page.waitForURL(/designs|my-designs|profiles\/designs/i, {
-          timeout: 15_000,
-        }),
+        page.waitForURL(
+          /\/account\/designs|\/profiles\/designs|\/my-designs/i,
+          {
+            timeout: 15_000,
+          },
+        ),
         item.click(),
       ]);
-      // Either a designs grid OR an empty-state — we accept either; the
-      // test ensures the route works and renders content.
-      await expect(page.locator("body")).toBeVisible();
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.getByRole("heading", {
+          name: /my designs|saved designs|your designs/i,
+        }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -1022,14 +1029,19 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /my uploads/i }).first();
       await Promise.all([
-        page.waitForURL(/uploads|my-uploads|profiles\/uploads/i, {
-          timeout: 15_000,
-        }),
+        page.waitForURL(
+          /\/account\/uploads|\/profiles\/uploads|\/my-uploads/i,
+          {
+            timeout: 15_000,
+          },
+        ),
         item.click(),
       ]);
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.getByRole("heading", {
+          name: /my uploads|your uploads|uploaded/i,
+        }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -1043,14 +1055,14 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /group orders/i }).first();
       await Promise.all([
-        page.waitForURL(/group-orders|group_orders|profiles\/group/i, {
+        page.waitForURL(/\/group-orders|\/account\/group/i, {
           timeout: 15_000,
         }),
         item.click(),
       ]);
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.getByRole("heading", { name: /group orders|group order/i }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -1064,12 +1076,12 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /fundraisers/i }).first();
       await Promise.all([
-        page.waitForURL(/fundraisers/i, { timeout: 15_000 }),
+        page.waitForURL(/\/fundraisers/i, { timeout: 15_000 }),
         item.click(),
       ]);
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.getByRole("heading", { name: /fundraisers|fundraising/i }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -1083,14 +1095,16 @@ test.describe("logged-in user — header journeys", () => {
 
       const item = page.getByRole("link", { name: /online stores/i }).first();
       await Promise.all([
-        page.waitForURL(/online-stores|stores|profiles\/stores/i, {
+        page.waitForURL(/\/online-stores|\/account\/stores/i, {
           timeout: 15_000,
         }),
         item.click(),
       ]);
-      await expect(page.getByRole("heading").first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.getByRole("heading", {
+          name: /online stores|your stores|my stores/i,
+        }),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -1132,10 +1146,11 @@ test.describe("logged-in user — header journeys", () => {
         page.waitForURL(/\/(cart|checkout)/, { timeout: 15_000 }),
         header.cart.click(),
       ]);
-      const lineItem = page
-        .getByRole("listitem")
-        .or(page.locator("[class*='LineItem'], [class*='CartItem']"))
-        .first();
+      // role=listitem is the user-perceivable contract (screen readers +
+      // standard cart UIs). Drop the [class*='LineItem'] CSS-class fallback
+      // — A6 implementation-detail smell. If the cart loses listitem role
+      // that's a real a11y regression and the test should fail loudly.
+      const lineItem = page.getByRole("listitem").first();
       await expect(lineItem).toBeVisible({ timeout: 10_000 });
 
       // RELOAD — the bug class this test catches: persistence must survive
@@ -1214,7 +1229,14 @@ test.describe("logged-in user — header journeys", () => {
         page.waitForURL(/\/products\/favorites/, { timeout: 15_000 }),
         heart.click(),
       ]);
-      await expect(page.locator("body")).toBeVisible();
+      // Either a persisted favourite item OR the empty-state copy must
+      // render — proves the route hydrated, not that an empty body shipped.
+      await expect(
+        page
+          .getByRole("listitem")
+          .first()
+          .or(page.getByText(/browse our products and click the heart icon/i)),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 });
