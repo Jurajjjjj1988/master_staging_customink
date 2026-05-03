@@ -15,40 +15,42 @@ npm run check    # typecheck + lint + P1 suite
 
 ## What's covered
 
-| Section                   | Tests | Coverage in one line                                                                                                                                                |
-| ------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Render & layout**       |     8 | Cross-page consistency (5 pages), logo navigation, 1023/320 breakpoints, footer visual baselines, header bounding-box positioning, LCP budget                       |
-| **Navigation & links**    |   ~20 | Header nav, mega-menus (5 panels + structural + content sanity + critical CTAs), footer sections, follow-us, footer-meta, special protocols, page-wide href hygiene |
-| **Search**                |    11 | Submit, autocomplete open/close, ArrowDown+Enter navigation, empty/oversized inputs, XSS escape, 5 special-character classes                                        |
-| **User state**            |     3 | Logged-out Sign-In link, avatar dropdown (Sign-In + Create An Account), logged-in dropdown + logout                                                                 |
-| **Marketing & support**   |     7 | Promo banner + Shop Sale CTA, phone label + tel:, Chat Now button, Send Email click-through, YouTube embed, Klaviyo container, feedback widget                      |
-| **Cookie consent**        |     5 | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                         |
-| **Accessibility**         |     3 | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                    |
-| **Page quality**          |    13 | Copyright year, SEO `<head>` essentials (×5), duplicate IDs, alt text, button accessible names, JSON-LD validity, robots.txt + sitemap discovery                    |
-| **Helpers (unit)**        |     5 | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                          |
-| **Cross-cutting fixture** |     — | `monitorPageHealth` runs on every test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                            |
+| Section                       | File                               | Tests | Coverage in one line                                                                                                                                                                                                                                                |
+| ----------------------------- | ---------------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User journeys (anonymous)** | `tests/user-journeys.spec.ts`      |   ~40 | 22 journeys: search, autocomplete, no-results, call, chat, promo banner Shop Sale, mega-menu open + Escape, logo, cart icon, registration (2 entries), login (form + Enter), favorites anon, footer link click-through (16 links), Follow Us (6 socials), skip-link |
+| **User journeys (logged-in)** | `tests/user-journeys.spec.ts`      |    12 | LOGOUT, search logged-in, 7 My-Account dropdown items (Order History etc.), CART persisted, FAVORITES persisted, header heart icon — gated on `storage/auth.json`                                                                                                   |
+| **Search depth**              | `tests/search.spec.ts`             |    11 | XSS escape, special-character classes, oversized inputs, autocomplete open/close — beyond the user-journey FIND/AUTOCOMPLETE                                                                                                                                        |
+| **Cookie consent**            | `tests/cookie-consent.spec.ts`     |     5 | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                                                                                                                         |
+| **Accessibility**             | `tests/a11y.spec.ts`               |     3 | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                                                                                                                    |
+| **Render**                    | `tests/render.spec.ts`             |     5 | Cross-page consistency — header + footer render on every primary route                                                                                                                                                                                              |
+| **Responsive**                | `tests/responsive.spec.ts`         |    ~2 | 1023 / 320 breakpoints — secondary actions stay reachable; mega-menu collapses                                                                                                                                                                                      |
+| **Visual regression**         | `tests/visual.spec.ts`             |    ~2 | Region snapshots scoped to stable footer rows (legal + follow-us icons)                                                                                                                                                                                             |
+| **Regression baselines**      | `tests/regression.spec.ts`         |    ~3 | Known-offender baselines                                                                                                                                                                                                                                            |
+| **User-state baseline**       | `tests/user-state.spec.ts`         |     2 | Anonymous Sign-In link visibility + avatar hover dropdown structure                                                                                                                                                                                                 |
+| **Footer marketing**          | `tests/marketing-elements.spec.ts` |     2 | YouTube embed loads on play click + Send-Us-Email click-through to /contact                                                                                                                                                                                         |
+| **Auth setup**                | `tests/auth.setup.ts`              |     1 | Verifies `storage/auth.json` is still usable before logged-in tests run                                                                                                                                                                                             |
+| **Helpers (unit)**            | `tests/_unit/`                     |     5 | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                                                                                                                          |
+| **Cross-cutting fixture**     | `fixtures/pages.fixture.ts`        |     — | `monitorPageHealth` auto-runs per test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                                                                                                                            |
 
-**Total: 49 functional scenarios + 1 cross-cutting fixture, 88 P1 tests when expanded across data-driven cases.**
+**Total: ~93 tests across the suite (single browser project).** Auth-gated logged-in journeys skip without `storage/auth.json`. Run sharded across browsers in CI.
 
 ### By priority
 
-| Priority | Tests | What it gates                                                                                    |
-| -------- | ----: | ------------------------------------------------------------------------------------------------ |
-| P1       |    32 | PR check; deploy blocker. Every linked-revenue path or a11y-baseline test.                       |
-| P2       |    15 | Nightly. Important but not deploy-blocking (autocomplete UX, settings, marketing surfaces).      |
-| P3       |     2 | Nightly only. Visual baselines + LCP budget — informational signals on trend, not gating checks. |
+| Priority | Tests | What it gates                                                                                                                                  |
+| -------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1       |   ~70 | PR check; deploy blocker. Every revenue-path user journey (cart, login, registration, search, footer links) + a11y-baseline.                   |
+| P2       |   ~15 | Nightly. Important but not deploy-blocking (autocomplete UX, mega-menu Escape, account dropdown items My Designs / My Uploads / Group Orders). |
+| P3       |    ~3 | Nightly only. Visual baselines + low-priority dropdown items (Fundraisers, Online Stores) — informational signals on trend, not gating.        |
 
 ### By dimension
 
-| Dimension     | Coverage source                                                                                                      |
-| ------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Functional    | All sections above except Performance and Visual                                                                     |
-| Visual        | 2 region snapshots (footer legal row, footer Follow-Us icons row) + 1 bounding-box layout test                       |
-| Accessibility | axe-core scan ×2 (header + footer), keyboard navigation, cookie banner keyboard operability, alt text + button names |
-| Performance   | Header LCP < 3 s (P3 nightly only)                                                                                   |
-| Security      | XSS escape in search, no `javascript:` hrefs anywhere, no tracking cookies post-rejection                            |
-| SEO           | `<head>` essentials (title, description, canonical, og:image, viewport), JSON-LD validity, robots.txt + sitemap      |
-| Cross-cutting | `monitorPageHealth` runs on every test (console errors + warnings + 4xx/5xx + broken images + mixed content)         |
+| Dimension     | Coverage source                                                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Functional    | `user-journeys.spec.ts` (22 anon + 12 logged-in journeys), `search.spec.ts` (XSS / special chars / oversized inputs)                                       |
+| Visual        | `visual.spec.ts` — region snapshots scoped to stable footer rows (legal + follow-us icons)                                                                 |
+| Accessibility | `a11y.spec.ts` — axe-core scan on header + footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                            |
+| Security      | `search.spec.ts` XSS escape, `user-journeys.spec.ts` no `javascript:` hrefs in click-throughs, `cookie-consent.spec.ts` no tracking cookies post-rejection |
+| Cross-cutting | `monitorPageHealth` auto-fixture: console errors + 4xx/5xx + broken images + mixed content on every test                                                   |
 
 ### By Playwright project
 
@@ -168,16 +170,18 @@ The implementation spec is in [`docs/superpowers/specs/`](docs/superpowers/specs
 
 Browsers configured as Playwright projects: `chromium-desktop` (1440×900), `mobile-chrome` (Pixel 5), `mobile-safari` (iPhone 13), `webkit-desktop`, `prod-smoke` (chromium against `PROD_URL`).
 
-## Performance baseline
+## Wall-time baseline
 
-Measured locally against staging (M-series Mac, no other load):
+Measured locally against staging (M-series Mac):
 
-| Subset                | Tests | Wall time |
-| --------------------- | ----: | --------: |
-| P1 only               |    88 |   ~1m 30s |
-| Full suite (P1+P2+P3) |  ~106 |   ~1m 50s |
+| Subset                                     | Workers | Wall time | Notes                                   |
+| ------------------------------------------ | ------: | --------: | --------------------------------------- |
+| Full suite (anonymous + logged-in)         |       1 |     ~13 m | Stable signal — no staging-load flake   |
+| Full suite (anonymous + logged-in)         |       2 |      ~9 m | Faster but introduces sporadic flake    |
+| Anonymous only (`chromium-desktop`)        |       1 |     ~13 m | 32 / 52 currently passing (workers=1)   |
+| Logged-in only (`chromium-desktop-authed`) |       1 |      ~7 m | Cross-domain auth gap blocks most tests |
 
-Most of the wall time is network round-trip to staging (lazy-loaded Web Components, third-party scripts). Sharded 4× in CI the P1 suite is well under the 2-minute PR-gate target.
+Most of the wall time is network round-trip to staging (lazy-loaded Web Components, third-party scripts). Sharded 4× in CI the suite hits the ~2-minute PR-gate target.
 
 ## CI/CD
 
