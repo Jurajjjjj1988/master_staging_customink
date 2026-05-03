@@ -10,7 +10,7 @@ import { PAGES_UNDER_TEST } from "../data/pages-under-test";
  */
 test.describe("@p1 render — header & footer cross-page consistency", () => {
   for (const pageDef of PAGES_UNDER_TEST) {
-    test(`should_render_header_and_footer_on_${pageDef.name}_page`, async ({
+    test(`header and footer render on the ${pageDef.name} page`, async ({
       page,
     }) => {
       await test.step(`navigate to ${pageDef.path}`, async () => {

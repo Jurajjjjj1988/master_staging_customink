@@ -2,14 +2,6 @@
 
 End-to-end tests for the global header and footer of [CustomInk](https://www.customink.com) — the parts of the site that ship on every page. Playwright + TypeScript against staging.
 
-## Latest run
-
-| Tests | Passed | Failed | Skipped | Wall time | Workers | Date       |
-| ----: | -----: | -----: | ------: | --------: | ------: | ---------- |
-|    57 |     34 |     22 |       3 |     7.0 m |       2 | 2026-04-23 |
-
-22 failures are real test-logic issues (speculative locators against unobserved DOM regions), not staging flake. See [Known failures](#known-failures) — Walk & Watch via Chrome DevTools MCP is the canonical fix.
-
 ## Quick start
 
 ```bash
@@ -19,55 +11,78 @@ cp .env.example .env
 npm run test:p1
 ```
 
-## Pivot 1 — Journey × surface
+## Pivot 1 — Journey × state × surface
 
-The same conceptual journey can touch header, footer, or both. This shows breadth at a glance.
+The same conceptual journey can touch header / footer, and behave differently per user state.
 
-| Journey                        | Header | Footer |  Cross-page  |
-| ------------------------------ | :----: | :----: | :----------: |
-| FIND (search submit)           |   ✓    |        |              |
-| AUTOCOMPLETE                   |   ✓    |        |              |
-| NO-RESULTS                     |   ✓    |        |              |
-| GET HELP CALL (tel: link)      |   ✓    |   ✓    |              |
-| CHAT NOW (LiveChat widget)     |   ✓    |        |              |
-| MENU NAVIGATION (mega-menu)    |   ✓    |        |              |
-| LOGO → HOME                    |   ✓    |        |              |
-| CART (guest + persisted)       |   ✓    |        |              |
-| FAVORITES                      |   ✓    |        |              |
-| REGISTRATION                   |   ✓    |        |              |
-| LOGIN (passwordless)           |   ✓    |        |              |
-| LOGOUT                         |   ✓    |        |              |
-| ACCOUNT DROPDOWN (4 items)     |   ✓    |        |              |
-| FOOTER LINKS (16 destinations) |        |   ✓    |              |
-| FOLLOW US (6 socials)          |        |   ✓    |              |
-| SKIP-LINK (a11y)               |   ✓    |        |              |
-| RENDER consistency             |        |        | ✓ (5 routes) |
-| COOKIE BANNER                  |        |        | ✓ (3 tests)  |
+| Journey                         |   State   | Header | Footer |  Cross-page  |
+| ------------------------------- | :-------: | :----: | :----: | :----------: |
+| FIND (search submit)            |   both    |   ✓    |        |              |
+| AUTOCOMPLETE                    |   both    |   ✓    |        |              |
+| NO-RESULTS                      |   both    |   ✓    |        |              |
+| GET HELP CALL (tel: link)       |   both    |   ✓    |   ✓    |              |
+| CHAT NOW (LiveChat widget)      |   both    |   ✓    |        |              |
+| MENU NAVIGATION (mega-menu)     |   both    |   ✓    |        |              |
+| LOGO → HOME                     |   both    |   ✓    |        |              |
+| CART (guest)                    | anonymous |   ✓    |        |              |
+| CART (persisted)                | logged-in |   ✓    |        |              |
+| FAVORITES                       | anonymous |   ✓    |        |              |
+| FAVORITES (persisted)           | logged-in |   ✓    |        |              |
+| Header heart icon               | logged-in |   ✓    |        |              |
+| REGISTRATION                    | anonymous |   ✓    |        |              |
+| LOGIN (passwordless)            | anonymous |   ✓    |        |              |
+| LOGOUT                          | logged-in |   ✓    |        |              |
+| ACCOUNT DROPDOWN (×4 items)     | logged-in |   ✓    |        |              |
+| SEARCH (authenticated context)  | logged-in |   ✓    |        |              |
+| FOOTER LINKS (×16 destinations) |   both    |        |   ✓    |              |
+| FOLLOW US (×6 socials)          |   both    |        |   ✓    |              |
+| SKIP-LINK (a11y)                |   both    |   ✓    |        |              |
+| RENDER consistency              |   both    |        |        | ✓ (5 routes) |
+| COOKIE BANNER                   |   both    |        |        | ✓ (3 tests)  |
 
-## Pivot 2 — Test × bug-class caught
+## Pivot 2 — Journey × variant × state × bug-class caught
 
-What bug would slip into production if this test didn't exist? Every test answers this.
+What bug would slip into production if this test didn't exist? Variant column makes happy / failure / boundary paths scannable at a glance.
 
-| Test family               | Bug-class caught                                      | Asserted via                                                |
-| ------------------------- | ----------------------------------------------------- | ----------------------------------------------------------- |
-| FIND positive             | Algolia returns 0 hits but route resolves OK          | `productLinks.count() > 2` on `/products/t-shirts/` href    |
-| FIND negative             | Empty submit silently navigates user away             | `page.url()` unchanged after Enter                          |
-| AUTOCOMPLETE              | Suggestions don't open / keyboard nav broken          | first option visible + `waitForURL` after ArrowDown+Enter   |
-| NO-RESULTS                | Wrong query silently lands on homepage                | `toHaveURL(NONEXISTENT)` + empty-state copy                 |
-| GET HELP CALL             | Phone link unclickable / wrong dialer format          | `toHaveAttribute('href', /^tel:.../)` + `toBeEnabled`       |
-| MEGA-MENU navigation      | Panel renders marketing CTAs only, no real categories | `[href*="/products/"]` filter + URL match                   |
-| MEGA-MENU panel-stacking  | Two panels open simultaneously (focus-trap bug)       | `aria-expanded` toggle on triggers                          |
-| CART (guest) + qty recalc | Total shows $0.00 with items / static on qty change   | `/\$[1-9]\d*/` + textContent before/after                   |
-| CART (persisted)          | Server-side state lost on reload                      | listitem visible after `page.reload()`                      |
-| FAVORITES persisted       | Server-side favorite lost across sessions             | item visible on `/products/favorites` after add             |
-| REGISTRATION negative     | Form ships without invalid-email validation           | submit invalid → validation feedback visible                |
-| LOGIN positive            | Form regresses from passwordless to password-based    | "Continue With Email" + OAuth + "Create an account" visible |
-| FOOTER LINKS (×14 normal) | Link wired to `/foo` but `/foo` is 200-OK custom 404  | heading visible + `not.toHaveText(/page not found\|^404/)`  |
-| FOOTER LINKS (×4 auth)    | Anonymous auth-required redirect chain broken         | `waitForURL(/sign_in/)` + sign-in heading visible           |
-| FOLLOW US external        | Wrong destination domain                              | `URL.hostname` contains expected + `target=_blank`          |
-| FOLLOW US internal (Blog) | Blog destination broken                               | click + destination heading visible                         |
-| SKIP-LINK                 | Keyboard users trapped behind header                  | URL contains `#main-content` after Tab+Enter                |
-| LOGOUT                    | Header doesn't revert to anonymous after sign-out     | `accountMenuButton` hidden + `signInLink` visible           |
+| Journey                        | Variant  |   State   | Bug-class caught                                      | Asserted via                                                |
+| ------------------------------ | :------: | :-------: | ----------------------------------------------------- | ----------------------------------------------------------- |
+| FIND                           | **POS**  |   both    | Algolia returns 0 hits but route resolves OK          | `productLinks.count() > 2` on `/products/t-shirts/` href    |
+| FIND                           | **NEG**  |   both    | Empty submit silently navigates user away             | `page.url()` unchanged after Enter                          |
+| AUTOCOMPLETE                   | **POS**  |   both    | Suggestions don't open / keyboard nav broken          | first option visible + `waitForURL` after ArrowDown+Enter   |
+| NO-RESULTS                     | **POS**  |   both    | Wrong query silently lands on homepage                | `toHaveURL(NONEXISTENT)` + empty-state copy                 |
+| GET HELP CALL                  | **POS**  |   both    | Phone link unclickable / wrong dialer format          | `toHaveAttribute('href', /^tel:.../)` + `toBeEnabled`       |
+| PROMO BANNER                   | **POS**  |   both    | Shop Sale CTA dead                                    | `waitForURL` + sale-tagged result visible                   |
+| MENU NAVIGATION (mega-menu)    | **POS**  |   both    | Panel renders marketing CTAs only, no real categories | `[href*="/products/"]` filter + URL match                   |
+| MENU NAVIGATION (mega-menu)    | **EDGE** |   both    | Two panels open simultaneously (focus-trap bug)       | `aria-expanded` toggle on triggers                          |
+| LOGO → HOME                    | **POS**  |   both    | Logo click broken                                     | `page.url()` is `/` after click                             |
+| CART ICON → /cart              | **POS**  | anonymous | Cart icon dead from a deep page                       | `waitForURL(/\/cart/)` + cart heading visible               |
+| CART (guest)                   | **POS**  | anonymous | Total shows $0.00 with items                          | `/\$[1-9]\d*/` regex on total                               |
+| CART (guest)                   | **NEG**  | anonymous | Empty cart silently shows zero items, no copy         | empty-state copy visible on `/cart`                         |
+| CART (guest)                   | **EDGE** | anonymous | Total stays static when qty changes                   | `textContent` before/after qty `+`                          |
+| CART (persisted)               | **POS**  | logged-in | Server-side cart state lost on reload                 | line item visible after `page.reload()`                     |
+| FAVORITES                      | **POS**  | anonymous | Heart toggle dead / empty page                        | favorites list / empty-state copy                           |
+| FAVORITES                      | **NEG**  | anonymous | No empty-state copy for empty favorites               | empty-state text visible                                    |
+| FAVORITES (persisted)          | **POS**  | logged-in | Server-side favorite lost across sessions             | item visible on `/products/favorites` after add             |
+| Header heart icon              | **POS**  | logged-in | Direct path to `/products/favorites` broken           | URL match after click                                       |
+| REGISTRATION                   | **POS**  | anonymous | Sign-up form ships without proper fields              | email + password + confirm fields visible                   |
+| REGISTRATION                   | **NEG**  | anonymous | Form ships without invalid-email validation           | submit invalid → validation feedback visible                |
+| REGISTRATION                   | **EDGE** | anonymous | Empty form submission accepted                        | submit blocked, stays on `/sign_up`                         |
+| LOGIN                          | **POS**  | anonymous | Form regresses from passwordless to password-based    | "Continue With Email" + OAuth + "Create an account" visible |
+| LOGIN                          | **NEG**  | anonymous | No invalid-email validation feedback                  | validation feedback visible                                 |
+| LOGIN                          | **EDGE** | anonymous | Empty submit accepted                                 | stays on `/sign_in`                                         |
+| LOGOUT                         | **POS**  | logged-in | Header doesn't revert to anonymous after sign-out     | `accountMenuButton` hidden + `signInLink` visible           |
+| ACCOUNT DROPDOWN (×4 items)    | **POS**  | logged-in | Dropdown nav items dead                               | each item: click → destination heading visible              |
+| SEARCH (logged-in)             | **POS**  | logged-in | Search behaves differently when authenticated         | results visible + Sign In hidden                            |
+| CHAT NOW                       | **POS**  |   both    | LiveChat widget never opens                           | iframe `[title*="LiveChat"]` attached                       |
+| SKIP-LINK (a11y)               | **POS**  |   both    | Keyboard users trapped behind header                  | URL contains `#main-content` after Tab+Enter                |
+| FOOTER LINK (×14 normal)       | **POS**  |   both    | Link wired to `/foo` but `/foo` is 200-OK custom 404  | heading visible + `not.toHaveText(/page not found\|^404/)`  |
+| FOOTER LINK (×4 auth-required) | **POS**  | anonymous | Auth-required redirect chain broken                   | `waitForURL(/sign_in/)` + sign-in heading visible           |
+| FOLLOW US (×5 external)        | **POS**  |   both    | Wrong destination domain                              | `URL.hostname` contains expected + `target=_blank`          |
+| FOLLOW US (×1 internal Blog)   | **POS**  |   both    | Blog destination broken                               | click + destination heading visible                         |
+| RENDER consistency (×5 routes) | **POS**  |   both    | Header / footer missing on a primary route            | both visible after each `goto`                              |
+| COOKIE BANNER (first visit)    | **POS**  |   both    | Banner missing on first visit                         | banner visible                                              |
+| COOKIE BANNER (acceptance)     | **POS**  |   both    | Acceptance lost on reload                             | banner hidden after reload                                  |
+| COOKIE BANNER (settings)       | **POS**  |   both    | Settings dialog broken                                | save closes banner                                          |
 
 ## Pivot 3 — Test × layer / technique
 
@@ -86,7 +101,7 @@ Tests aren't all driven through the slowest UI layer. This shows technique depth
 
 ## Known failures
 
-22 fails from the 2026-04-23 run. All are real test-logic issues — speculative locators against unobserved DOM. Walk & Watch via Chrome DevTools MCP is the canonical fix path; we record observed DOM, replace each guess with a real selector, re-run.
+A handful of tests currently fail with speculative locators against unobserved DOM regions. Walk & Watch via Chrome DevTools MCP is the canonical fix path: record observed DOM, replace each guess with a real selector, re-run.
 
 | Failure pattern              | Tests affected | Root-cause hypothesis                                                 |
 | ---------------------------- | -------------: | --------------------------------------------------------------------- |

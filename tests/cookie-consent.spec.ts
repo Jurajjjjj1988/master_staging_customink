@@ -15,7 +15,7 @@ import { CookieBanner } from "../pages/components/CookieBanner";
 test.use({ dismissCookie: false });
 
 test.describe("@p1 cookie-consent — first visit", () => {
-  test("should_show_cookie_banner_on_first_visit", async ({ page }) => {
+  test("cookie banner shows on first visit", async ({ page }) => {
     await page.goto("/");
     const banner = new CookieBanner(page);
     await expect(banner.root).toBeVisible({ timeout: 10_000 });
@@ -25,7 +25,7 @@ test.describe("@p1 cookie-consent — first visit", () => {
 });
 
 test.describe("@p1 cookie-consent — acceptance persistence", () => {
-  test("should_persist_acceptance_and_set_analytics_cookies_after_reload", async ({
+  test("cookie acceptance persists across reload and sets analytics cookies", async ({
     page,
     context,
   }) => {
@@ -48,7 +48,7 @@ test.describe("@p1 cookie-consent — acceptance persistence", () => {
 });
 
 test.describe("@p2 cookie-consent — settings", () => {
-  test("should_save_custom_preferences_via_cookie_settings", async ({
+  test("custom cookie preferences save via the settings dialog", async ({
     page,
   }) => {
     await page.goto("/");

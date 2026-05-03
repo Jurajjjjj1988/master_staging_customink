@@ -24,7 +24,7 @@ const hasAuthState = existsSync(AUTH_STATE_PATH);
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — find / search submit", () => {
-  test("positive: user submits a valid query and lands on results that reflect it", async ({
+  test("user submits a valid query and lands on results that reflect it", async ({
     page,
   }) => {
     await page.goto("/");
@@ -51,7 +51,7 @@ test.describe("@p1 journey — find / search submit", () => {
     ).toBeGreaterThan(2);
   });
 
-  test("negative: empty submit does not navigate away", async ({ page }) => {
+  test("empty submit does not navigate away", async ({ page }) => {
     await page.goto("/");
     const startUrl = page.url();
     const header = new HeaderComponent(page);
@@ -70,7 +70,7 @@ test.describe("@p1 journey — find / search submit", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — autocomplete suggestions", () => {
-  test("positive: typing opens suggestions and ArrowDown+Enter navigates", async ({
+  test("typing opens suggestions and ArrowDown+Enter navigates", async ({
     page,
   }) => {
     await page.goto("/");
@@ -103,7 +103,7 @@ test.describe("@p1 journey — search returns no results", () => {
    * sends the user to the homepage on no-match, or shows stale recommendations
    * without a "no results" cue, ships without this test.
    */
-  test("positive: nonexistent query lands on a results page that says it found nothing", async ({
+  test("nonexistent query lands on a results page that says it found nothing", async ({
     page,
   }) => {
     await page.goto("/");
@@ -147,7 +147,7 @@ test.describe("@p1 journey — search returns no results", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — call support", () => {
-  test("positive: phone affordance is dialable in the format the OS dialer accepts", async ({
+  test("phone affordance is dialable in the format the OS dialer accepts", async ({
     page,
   }) => {
     await page.goto("/", { timeout: 60_000 });
@@ -183,7 +183,7 @@ test.describe("@p1 journey — call support", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — promo banner Shop Sale", () => {
-  test("positive: user clicks Shop Sale in the promo strip and lands on a sale-tagged listing", async ({
+  test("user clicks Shop Sale in the promo strip and lands on a sale-tagged listing", async ({
     page,
   }) => {
     await page.goto("/", { timeout: 60_000 });
@@ -216,7 +216,7 @@ test.describe("@p1 journey — promo banner Shop Sale", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — cart icon navigates to cart", () => {
-  test("positive: user clicks the cart icon from a product page and lands on /cart", async ({
+  test("user clicks the cart icon from a product page and lands on /cart", async ({
     page,
   }) => {
     // From a deep page (not homepage) the cart icon must still navigate.
@@ -244,7 +244,7 @@ test.describe("@p1 journey — cart icon navigates to cart", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — skip to main content", () => {
-  test("positive: keyboard user can skip past the header straight to main content", async ({
+  test("keyboard user can skip past the header straight to main content", async ({
     page,
   }) => {
     await page.goto("/", { timeout: 60_000 });
@@ -262,9 +262,7 @@ test.describe("@p1 journey — skip to main content", () => {
 });
 
 test.describe("@p1 journey — chat now", () => {
-  test("positive: clicking Chat Now opens the LiveChat widget", async ({
-    page,
-  }) => {
+  test("clicking Chat Now opens the LiveChat widget", async ({ page }) => {
     await page.goto("/");
 
     const chatTrigger = page
@@ -411,7 +409,7 @@ test.describe("@p1 journey — Follow Us social links", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — favorites", () => {
-  test("positive: user adds a product to favorites and finds it on /products/favorites", async ({
+  test("user adds a product to favorites and finds it on /products/favorites", async ({
     page,
   }) => {
     await page.goto("/products/t-shirts/4", { timeout: 60_000 });
@@ -473,7 +471,7 @@ test.describe("@p1 journey — favorites", () => {
     });
   });
 
-  test("negative: clicking favorites in the header without anything saved shows the empty state", async ({
+  test("clicking favorites in the header without anything saved shows the empty state", async ({
     page,
   }) => {
     // Anonymous, no saved products → favorites page must communicate the
@@ -500,7 +498,7 @@ test.describe("@p1 journey — favorites", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — registration", () => {
-  test("positive: user opens registration from the avatar and sees a real signup form", async ({
+  test("user opens registration from the avatar and sees a real signup form", async ({
     page,
   }) => {
     await page.goto("/");
@@ -533,7 +531,7 @@ test.describe("@p1 journey — registration", () => {
     ).toBeEnabled();
   });
 
-  test("negative: submitting an invalid email shows a validation message", async ({
+  test("submitting an invalid email shows a validation message", async ({
     page,
   }) => {
     // Direct goto with a short timeout. If it fails for any reason (404, 502,
@@ -600,7 +598,7 @@ test.describe("@p1 journey — registration", () => {
     ).toBe(true);
   });
 
-  test("edge: submitting an empty form blocks the request and keeps the user on the page", async ({
+  test("submitting an empty form blocks the request and keeps the user on the page", async ({
     page,
   }) => {
     await page.goto("/");
@@ -635,7 +633,7 @@ test.describe("@p1 journey — registration", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — log in", () => {
-  test("positive: user opens sign-in from the avatar and sees a real sign-in form", async ({
+  test("user opens sign-in from the avatar and sees a real sign-in form", async ({
     page,
   }) => {
     // Bumped from default 30s — staging occasionally takes longer to first
@@ -674,7 +672,7 @@ test.describe("@p1 journey — log in", () => {
     ).toBeVisible();
   });
 
-  test("negative: invalid email format produces validation feedback before any send", async ({
+  test("invalid email format produces validation feedback before any send", async ({
     page,
   }) => {
     await page.goto("/profiles/users/sign_in");
@@ -716,7 +714,7 @@ test.describe("@p1 journey — log in", () => {
     ).toBe(true);
   });
 
-  test("edge: empty form submission is blocked and stays on the page", async ({
+  test("empty form submission is blocked and stays on the page", async ({
     page,
   }) => {
     await page.goto("/profiles/users/sign_in");
@@ -746,7 +744,7 @@ test.describe("@p1 journey — log in", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — cart", () => {
-  test("positive: user adds a product to the cart and sees it with a non-zero total", async ({
+  test("user adds a product to the cart and sees it with a non-zero total", async ({
     page,
   }) => {
     await page.goto("/products/t-shirts/4", { timeout: 60_000 });
@@ -805,7 +803,7 @@ test.describe("@p1 journey — cart", () => {
     await expect(total, "cart total is non-zero").toBeVisible();
   });
 
-  test("negative: visiting /cart with an empty cart shows the empty state", async ({
+  test("visiting /cart with an empty cart shows the empty state", async ({
     page,
   }) => {
     // Direct goto with a short timeout. If the route doesn't resolve OK,
@@ -831,7 +829,7 @@ test.describe("@p1 journey — cart", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("edge: cart total recalculates when line-item quantity is changed", async ({
+  test("cart total recalculates when line-item quantity is changed", async ({
     page,
   }) => {
     await page.goto("/products/t-shirts/4", { timeout: 60_000 });
@@ -900,7 +898,7 @@ test.describe("@p1 journey — menu navigation", () => {
    * a category. This journey exercises the full path: open → click sub-item →
    * land on the category page.
    */
-  test("positive: user opens a mega-menu and clicks a subcategory to reach the category page", async ({
+  test("user opens a mega-menu and clicks a subcategory to reach the category page", async ({
     page,
   }) => {
     await page.goto("/");
@@ -952,7 +950,7 @@ test.describe("@p1 journey — menu navigation", () => {
     });
   });
 
-  test("edge: hovering a different mega-menu trigger replaces the open panel", async ({
+  test("hovering a different mega-menu trigger replaces the open panel", async ({
     page,
   }) => {
     await page.goto("/");
@@ -984,7 +982,7 @@ test.describe("@p1 journey — menu navigation", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("@p1 journey — logo returns home", () => {
-  test("positive: user clicks the logo from a product page and lands on /", async ({
+  test("user clicks the logo from a product page and lands on /", async ({
     page,
   }) => {
     await page.goto("/products/t-shirts/4", { timeout: 60_000 });
@@ -1025,7 +1023,7 @@ test.describe("logged-in user — header journeys", () => {
   // 10b. SEARCH (logged-in) — search behaves correctly when authenticated
   // -------------------------------------------------------------------------
   test.describe("@p1 journey — search (logged-in)", () => {
-    test("positive: logged-in user submits a search and lands on results that reflect it", async ({
+    test("logged-in user submits a search and lands on results that reflect it", async ({
       page,
     }) => {
       // Search may behave differently when authenticated (saved searches,
@@ -1044,7 +1042,7 @@ test.describe("logged-in user — header journeys", () => {
   });
 
   test.describe("@p1 journey — log out", () => {
-    test("positive: logged-in user clicks Sign Out and the header reverts to anonymous state", async ({
+    test("logged-in user clicks Sign Out and the header reverts to anonymous state", async ({
       page,
     }) => {
       await page.goto("/", { timeout: 60_000 });
@@ -1079,7 +1077,7 @@ test.describe("logged-in user — header journeys", () => {
   // -------------------------------------------------------------------------
 
   test.describe("@p1 journey — account dropdown: Order History", () => {
-    test("positive: user navigates to order history from avatar dropdown", async ({
+    test("user navigates to order history from avatar dropdown", async ({
       page,
     }) => {
       await page.goto("/", { timeout: 60_000 });
@@ -1105,7 +1103,7 @@ test.describe("logged-in user — header journeys", () => {
   });
 
   test.describe("@p1 journey — account dropdown: Account Settings", () => {
-    test("positive: user navigates to account settings from avatar dropdown", async ({
+    test("user navigates to account settings from avatar dropdown", async ({
       page,
     }) => {
       await page.goto("/", { timeout: 60_000 });
@@ -1133,7 +1131,7 @@ test.describe("logged-in user — header journeys", () => {
   });
 
   test.describe("@p2 journey — account dropdown: My Designs", () => {
-    test("positive: user navigates to saved designs from avatar dropdown", async ({
+    test("user navigates to saved designs from avatar dropdown", async ({
       page,
     }) => {
       await page.goto("/", { timeout: 60_000 });
@@ -1162,9 +1160,7 @@ test.describe("logged-in user — header journeys", () => {
   });
 
   test.describe("@p2 journey — account dropdown: My Uploads", () => {
-    test("positive: user navigates to uploads from avatar dropdown", async ({
-      page,
-    }) => {
+    test("user navigates to uploads from avatar dropdown", async ({ page }) => {
       await page.goto("/", { timeout: 60_000 });
       const header = new HeaderComponent(page);
       await expect(header.accountMenuButton.first()).toBeVisible({
@@ -1194,7 +1190,7 @@ test.describe("logged-in user — header journeys", () => {
   // 19. CART (persisted) — differs from anonymous: persists across sessions
   // -------------------------------------------------------------------------
   test.describe("@p1 journey — cart (persisted)", () => {
-    test("positive: logged-in user adds a product, reloads, and the cart still contains it", async ({
+    test("logged-in user adds a product, reloads, and the cart still contains it", async ({
       page,
     }) => {
       await page.goto("/products/t-shirts/4", { timeout: 60_000 });
@@ -1251,7 +1247,7 @@ test.describe("logged-in user — header journeys", () => {
   // 20. FAVORITES (persisted) — differs from anonymous: server-side persistence
   // -------------------------------------------------------------------------
   test.describe("@p1 journey — favorites (persisted)", () => {
-    test("positive: logged-in user hearts a product and finds it listed on /products/favorites", async ({
+    test("logged-in user hearts a product and finds it listed on /products/favorites", async ({
       page,
     }) => {
       await page.goto("/products/t-shirts/4", { timeout: 60_000 });
@@ -1297,7 +1293,7 @@ test.describe("logged-in user — header journeys", () => {
   // 21. HEART ICON in header — direct path to /products/favorites
   // -------------------------------------------------------------------------
   test.describe("@p2 journey — header heart icon", () => {
-    test("positive: logged-in user clicks the heart icon in header and lands on /products/favorites", async ({
+    test("logged-in user clicks the heart icon in header and lands on /products/favorites", async ({
       page,
     }) => {
       await page.goto("/", { timeout: 60_000 });

@@ -10,7 +10,9 @@ import { HeaderComponent } from "../pages/components/HeaderComponent";
  */
 
 test.describe("@p1 search — submit valid query", () => {
-  test("should_navigate_to_results_when_search_submitted", async ({ page }) => {
+  test("user submits a query and lands on matching results", async ({
+    page,
+  }) => {
     await page.goto("/");
     const header = new HeaderComponent(page);
     await header.submitSearch("tshirt");
@@ -22,7 +24,7 @@ test.describe("@p1 search — submit valid query", () => {
 });
 
 test.describe("@p2 search — autocomplete", () => {
-  test("should_show_autocomplete_and_navigate_when_suggestion_clicked", async ({
+  test("typing opens suggestions and ArrowDown+Enter navigates to a destination", async ({
     page,
   }) => {
     await page.goto("/");
@@ -44,7 +46,9 @@ test.describe("@p2 search — autocomplete", () => {
 });
 
 test.describe("@p1 search — input boundaries", () => {
-  test("should_handle_empty_and_oversized_search_input", async ({ page }) => {
+  test("empty and oversized inputs are handled without error", async ({
+    page,
+  }) => {
     await page.goto("/");
     const header = new HeaderComponent(page);
     const startUrl = page.url();
@@ -80,7 +84,9 @@ test.describe("@p2 search — autocomplete UX surface", () => {
    * and closes on Escape.
    */
 
-  test("should_open_listbox_when_user_types_into_search", async ({ page }) => {
+  test("typing into search opens the autocomplete listbox", async ({
+    page,
+  }) => {
     await page.goto("/");
     const header = new HeaderComponent(page);
     await header.search.fill("tshi");
@@ -89,7 +95,7 @@ test.describe("@p2 search — autocomplete UX surface", () => {
     });
   });
 
-  test("should_close_listbox_when_escape_is_pressed", async ({ page }) => {
+  test("Escape closes the open autocomplete listbox", async ({ page }) => {
     await page.goto("/");
     const header = new HeaderComponent(page);
     await header.search.fill("tshi");
@@ -98,4 +104,3 @@ test.describe("@p2 search — autocomplete UX surface", () => {
     await expect(header.autocompleteOptions.first()).toBeHidden();
   });
 });
-

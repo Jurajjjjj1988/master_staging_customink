@@ -18,7 +18,7 @@ test.describe("@p2 marketing — Watch our TV Commercial (YouTube embed)", () =>
    * actual YouTube `<iframe>` is injected on click. We verify the click path
    * activates a YouTube embed (no preload — saves bandwidth on every visit).
    */
-  test("should_load_youtube_embed_when_play_clicked", async ({ page }) => {
+  test("clicking Play loads the YouTube embed iframe", async ({ page }) => {
     await page.goto("/", { timeout: 60_000 });
     await waitForFooterReady(page);
 
@@ -44,7 +44,7 @@ test.describe("@p1 support-block — email (Send us an Email)", () => {
    * page. This catches event-handler regressions that prevent default-click
    * and leave the user on the same page.
    */
-  test("should_navigate_to_contact_page_when_send_us_email_clicked", async ({
+  test('clicking "Send us an Email" navigates to /contact', async ({
     page,
   }) => {
     await page.goto("/", { timeout: 60_000 });

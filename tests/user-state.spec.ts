@@ -12,7 +12,9 @@ import { HeaderComponent } from "../pages/components/HeaderComponent";
  */
 
 test.describe("@p1 user-state — logged out", () => {
-  test("should_show_signin_link_when_logged_out", async ({ page }) => {
+  test("anonymous user sees the Sign In link in the header", async ({
+    page,
+  }) => {
     await page.goto("/");
     const header = new HeaderComponent(page);
     await expect(header.signInLink).toBeVisible();
@@ -32,7 +34,7 @@ test.describe("@p1 user-state — logged out", () => {
    * primary acquisition funnel without anyone noticing in functional tests
    * that target the top-level Sign-In link.
    */
-  test("should_open_avatar_dropdown_with_signin_and_create_account_when_signin_hovered", async ({
+  test("hovering the avatar opens a dropdown with Sign In and Create An Account", async ({
     page,
   }) => {
     await page.goto("/");
