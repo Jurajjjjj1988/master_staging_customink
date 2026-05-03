@@ -93,12 +93,57 @@ Each menu item under "My Account" is a potential journey. Sorted by likely test 
 
 ---
 
-## Still-needed observations (not yet captured)
+## Captured 2026-05-03 (late) via Chrome DevTools MCP
 
-When staging recovers from 502, run Walk & Watch on:
+### `/products/favorites` anonymous empty state
 
-- **REGISTRATION form** — avatar → "Create An Account" → destination URL, form fields, submit button name, validation behavior, captcha presence
-- **`/products/favorites` anonymous** — empty-state copy + CTA
-- **Heart affordance on a product detail page** — accessible name, pressed-state attribute, anonymous visibility
+- Heading reads as the homepage title ("Custom T-shirts - Design Your Own…") — page does not change document title for the empty state
+- Empty-state copy (verbatim): **"Browse our products and click the heart icon to save your favorites."**
+- No "Sign in to save" CTA visible anonymously
+
+### Sign-in form (`/profiles/users/sign_in`)
+
+- Heading "Sign In" rendered at `level=4`
+- Email field labeled "Enter Email Address"
+- Submit: button "Continue With Email"
+- OAuth: "Continue With Google", "Continue With Facebook"
+- Bottom link: "Create an account." → `/profiles/users/sign_up`
+- **Passwordless** — no password field on this form
+
+### Sign-up form (`/profiles/users/sign_up`)
+
+- Heading "Create An Account" `level=4`
+- Field 1 label: "Enter Email Address" (textbox, required, focused on load)
+- Field 2 label: "Enter New Password" (textbox + "SHOW" toggle)
+- Field 3 label: "Confirm New Password" (textbox + "SHOW" toggle)
+- Submit: button **"Continue"** (NOT "Sign up" / "Create Account" / "Register")
+- OAuth: "Continue With Google", "Continue With Facebook"
+- Inline link: Terms of Service + Privacy Policy
+- **Password-based** — distinct from passwordless sign-in
+
+### Heart / favorites affordance on product detail
+
+URL example: `/products/t-shirts/short-sleeve-t-shirts/gildan-softstyle-jersey-t-shirt/176100`
+
+- Per-color/variant `button "Add to favorites"` — many instances on a single product detail
+- The accessible name "Add to favorites" matches the existing regex in user-journeys.spec.ts
+- No standalone single heart button — each color variant has its own
+
+### Header heart icon (logged-in)
+
+- `link "Favorites"` with URL `/products/favorites`
+- Matches the existing `HeaderComponent.favorites` POM locator (`getByRole("link", { name: /^favorites$/i })`)
+
+### Order History destination URL
+
+- The footer "Track Your Order" link goes to `/account/orders` — confirms the dropdown's "Order History" likely lands on the same `/account/*` family. Test pattern updated to `/\\/account\\/orders|orders|order-history/i`.
+
+### Add-to-cart on product detail
+
+- **No direct add-to-cart button.** CustomInk requires the Design Lab to add anything to the cart — test correctly hits `test.skip` with that exact reason.
+
+## Still-needed observations (defer to tomorrow when more time / authed flow)
+
 - **LiveChat widget iframe** — actual `title` attribute when loaded
-- **Cart drawer / page** — line-item structure, total formatting, qty control accessible name
+- **Cart page after Design Lab flow** — line-item structure, total formatting, qty control accessible name (out of header scope but still useful)
+- **Each My Account dropdown item's destination URL** — confirm Order History lands on `/account/orders`; check Account Settings / My Designs / My Uploads / Group Orders / Fundraisers / Online Stores actual paths
