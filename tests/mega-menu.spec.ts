@@ -69,7 +69,7 @@ test.describe("@p1 mega-menu — content sanity", () => {
   }
 
   for (const triggerName of MEGA_MENU_TRIGGERS) {
-    test(`should_expose_at_least_5_links_in_opened_${triggerName.replace(/[^\w]+/g, "_")}_panel`, async ({
+    test(`should_expose_at_least_2_interactive_items_in_opened_${triggerName.replace(/[^\w]+/g, "_")}_panel`, async ({
       page,
     }) => {
       await page.goto("/");
