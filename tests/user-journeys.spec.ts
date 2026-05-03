@@ -484,7 +484,9 @@ test.describe("@p1 journey — registration", () => {
       .or(page.getByPlaceholder(/password/i))
       .first();
     if ((await passwordField.count()) > 0) {
-      await passwordField.fill("password123");
+      // Throwaway value — this test exercises invalid-email validation,
+      // not password strength. Pattern is "fill enough to trigger submit".
+      await passwordField.fill("NotARealPassword_TestOnly_2026");
     }
 
     await page
