@@ -438,10 +438,11 @@ test.describe("@p1 journey — registration", () => {
     await expect(
       page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)),
     ).toBeVisible();
+    // Real submit button observed via Walk & Watch on 2026-05-03: "Continue".
+    // The sign-up flow is password-based (email + new password + confirm),
+    // distinct from the passwordless sign-in flow.
     await expect(
-      page.getByRole("button", {
-        name: /create.*account|sign up|register/i,
-      }),
+      page.getByRole("button", { name: /^continue$/i }),
     ).toBeEnabled();
   });
 
