@@ -56,20 +56,11 @@ export default defineConfig({
       testMatch: /user-journeys\.spec\.ts/,
       grep: /logged-in user/,
     },
-    {
-      name: "mobile-chrome",
-      use: { ...devices["Pixel 5"] },
-    },
-    {
-      name: "mobile-safari",
-      // iOS user share for apparel e-commerce is meaningful — first-class project
-      // rather than a nightly-only afterthought.
-      use: { ...devices["iPhone 13"] },
-    },
-    {
-      name: "webkit-desktop",
-      use: { ...devices["Desktop Safari"] },
-    },
+    // Mobile (Pixel 5 / iPhone 13) and webkit-desktop projects intentionally
+    // omitted: the suite has no mobile-specific assertions yet (no hamburger
+    // drawer journey, no responsive-breakpoint differences). Re-add when a
+    // first mobile-perceivable journey lands; running desktop tests on a
+    // smaller viewport without different selectors would be vanity coverage.
     {
       // Production smoke: same suite, different baseURL. Run with
       // `npm run test:prod-smoke` to validate the suite against

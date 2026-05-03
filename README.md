@@ -8,7 +8,7 @@ This repository is the implementation artifact of a one-day take-home: spec → 
 
 ```bash
 npm install
-npx playwright install chromium webkit
+npx playwright install chromium
 cp .env.example .env
 npm run check    # typecheck + lint + P1 suite
 ```
@@ -71,7 +71,7 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 | **Render**                    | `tests/render.spec.ts`             |     5 | Cross-page consistency — header + footer render on every primary route                                                                                                                                                                                                                                                                                                                          |
 | **Cookie consent**            | `tests/cookie-consent.spec.ts`     |     3 | First-visit banner, accept persistence, settings save                                                                                                                                                                                                                                                                                                                                           |
 
-**Total: ~57 tests across the suite (single browser project).** Auth-gated logged-in journeys skip without `storage/auth.json`. Run sharded across browsers in CI.
+**Total: ~57 tests across the suite.** Auth-gated logged-in journeys skip without `storage/auth.json`.
 
 ### By priority
 
@@ -85,16 +85,6 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 | Dimension  | Coverage source                                                                                                 |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | Functional | `user-journeys.spec.ts` (~30 anon + 9 logged-in journeys), `search.spec.ts` (oversized inputs, autocomplete UX) |
-
-### By Playwright project
-
-| Project            | Browser            | Viewport   | When it runs                                        |
-| ------------------ | ------------------ | ---------- | --------------------------------------------------- |
-| `chromium-desktop` | Chromium           | 1440 × 900 | PR + nightly                                        |
-| `mobile-chrome`    | Chromium (Pixel 5) | mobile     | PR + nightly                                        |
-| `mobile-safari`    | WebKit (iPhone 13) | mobile     | nightly                                             |
-| `webkit-desktop`   | WebKit             | desktop    | nightly                                             |
-| `prod-smoke`       | Chromium           | 1440 × 900 | manual `npm run test:prod-smoke` against production |
 
 The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
 
@@ -133,8 +123,6 @@ The implementation spec is in [`docs/superpowers/specs/`](docs/superpowers/specs
 | `npm run test:ui`         | Interactive UI mode for debugging                                      |
 | `npm run test:report`     | Open the HTML report from the last run                                 |
 
-Browsers configured as Playwright projects: `chromium-desktop` (1440×900), `mobile-chrome` (Pixel 5), `mobile-safari` (iPhone 13), `webkit-desktop`, `prod-smoke` (chromium against `PROD_URL`).
-
 ## Wall-time baseline
 
 Measured locally against staging (M-series Mac):
@@ -150,8 +138,8 @@ Most of the wall time is network round-trip to staging (lazy-loaded Web Componen
 
 ## CI/CD
 
-- `.github/workflows/pr.yml` — every pull request: P1 only on `chromium-desktop` + `mobile-chrome`, sharded 4×, target < 2 min
-- `.github/workflows/nightly.yml` — `0 2 * * *`: full suite across `chromium-desktop` + `mobile-chrome` + `webkit-desktop`, sharded 8×, target < 8 min
+- `.github/workflows/pr.yml` — every pull request: P1 only, sharded 4×, target < 2 min
+- `.github/workflows/nightly.yml` — `0 2 * * *`: full suite, sharded 8×, target < 8 min
 
 Both workflows use `BASE_URL` from a workflow-level env var — change once, propagates to every shard.
 
@@ -170,9 +158,9 @@ This is a real production-style site with real-world behaviors that aren't fully
 
 A handful of items are deliberately deferred — see spec [§15](docs/superpowers/specs/2026-05-01-customink-header-footer-tests-design.md):
 
-- **OQ-1** Mega-menu render after page reload occasionally falls back to the simplified header. Test #8 absorbs this with timeout-tolerant hover.
+- **OQ-1** Mega-menu render after page reload occasionally falls back to the simplified header. The mega-menu navigation test absorbs this with timeout-tolerant hover.
 - **OQ-2** Authenticated user-state tests skip without a `storage/auth.json` file. They run as soon as one is provided.
-- **OQ-7** OneTrust banner does not implement a strict focus trap on this build. Test #18 verifies the weaker WCAG 2.1.1 keyboard-operable invariant.
+- **OQ-7** OneTrust banner does not implement a strict focus trap on this build. Cookie-consent tests verify the weaker WCAG 2.1.1 keyboard-operable invariant.
 
 ## Roadmap
 
