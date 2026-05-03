@@ -16,27 +16,27 @@ npm run check    # typecheck + lint + P1 suite
 ## What's covered
 
 | Section                   | Tests | Coverage in one line                                                                                                                                                |
-| ------------------------- | -----:| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Render & layout**       | 8     | Cross-page consistency (5 pages), logo navigation, 1023/320 breakpoints, footer visual baselines, header bounding-box positioning, LCP budget                       |
-| **Navigation & links**    | ~20   | Header nav, mega-menus (5 panels + structural + content sanity + critical CTAs), footer sections, follow-us, footer-meta, special protocols, page-wide href hygiene |
-| **Search**                | 11    | Submit, autocomplete open/close, ArrowDown+Enter navigation, empty/oversized inputs, XSS escape, 5 special-character classes                                        |
-| **User state**            | 3     | Logged-out Sign-In link, avatar dropdown (Sign-In + Create An Account), logged-in dropdown + logout                                                                 |
-| **Marketing & support**   | 7     | Promo banner + Shop Sale CTA, phone label + tel:, Chat Now button, Send Email click-through, YouTube embed, Klaviyo container, feedback widget                      |
-| **Cookie consent**        | 5     | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                         |
-| **Accessibility**         | 3     | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                    |
-| **Page quality**          | 13    | Copyright year, SEO `<head>` essentials (×5), duplicate IDs, alt text, button accessible names, JSON-LD validity, robots.txt + sitemap discovery                    |
-| **Helpers (unit)**        | 5     | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                          |
-| **Cross-cutting fixture** | —     | `monitorPageHealth` runs on every test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                            |
+| ------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Render & layout**       |     8 | Cross-page consistency (5 pages), logo navigation, 1023/320 breakpoints, footer visual baselines, header bounding-box positioning, LCP budget                       |
+| **Navigation & links**    |   ~20 | Header nav, mega-menus (5 panels + structural + content sanity + critical CTAs), footer sections, follow-us, footer-meta, special protocols, page-wide href hygiene |
+| **Search**                |    11 | Submit, autocomplete open/close, ArrowDown+Enter navigation, empty/oversized inputs, XSS escape, 5 special-character classes                                        |
+| **User state**            |     3 | Logged-out Sign-In link, avatar dropdown (Sign-In + Create An Account), logged-in dropdown + logout                                                                 |
+| **Marketing & support**   |     7 | Promo banner + Shop Sale CTA, phone label + tel:, Chat Now button, Send Email click-through, YouTube embed, Klaviyo container, feedback widget                      |
+| **Cookie consent**        |     5 | First-visit banner, accept persistence, rejection compliance (no NEW tracking cookies), settings save, keyboard operability                                         |
+| **Accessibility**         |     3 | axe-core scan on header AND footer (WCAG 2.1 AA), skip-link reachability + visible focus styling                                                                    |
+| **Page quality**          |    13 | Copyright year, SEO `<head>` essentials (×5), duplicate IDs, alt text, button accessible names, JSON-LD validity, robots.txt + sitemap discovery                    |
+| **Helpers (unit)**        |     5 | `escapeRegex` correctness — used by every name-regex selector in the suite                                                                                          |
+| **Cross-cutting fixture** |     — | `monitorPageHealth` runs on every test: console errors + warnings, 4xx/5xx, broken images, mixed content                                                            |
 
 **Total: 49 functional scenarios + 1 cross-cutting fixture, 88 P1 tests when expanded across data-driven cases.**
 
 ### By priority
 
 | Priority | Tests | What it gates                                                                                    |
-| -------- | -----:| ------------------------------------------------------------------------------------------------ |
-| P1       | 32    | PR check; deploy blocker. Every linked-revenue path or a11y-baseline test.                       |
-| P2       | 15    | Nightly. Important but not deploy-blocking (autocomplete UX, settings, marketing surfaces).      |
-| P3       | 2     | Nightly only. Visual baselines + LCP budget — informational signals on trend, not gating checks. |
+| -------- | ----: | ------------------------------------------------------------------------------------------------ |
+| P1       |    32 | PR check; deploy blocker. Every linked-revenue path or a11y-baseline test.                       |
+| P2       |    15 | Nightly. Important but not deploy-blocking (autocomplete UX, settings, marketing surfaces).      |
+| P3       |     2 | Nightly only. Visual baselines + LCP budget — informational signals on trend, not gating checks. |
 
 ### By dimension
 
@@ -61,6 +61,55 @@ npm run check    # typecheck + lint + P1 suite
 | `prod-smoke`       | Chromium           | 1440 × 900 | manual `npm run test:prod-smoke` against production |
 
 The full catalog — every scenario with the exact assertion, technique, and regression class it catches — is in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
+
+## User journey suite (`tests/user-journeys.spec.ts`)
+
+The suite is organised by **user state** because the header chrome differs depending on whether the user is signed in:
+
+| Header chrome | Anonymous user                                                                | Logged-in user                                         |
+| ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Auth control  | "Sign In" link (avatar dropdown opens panel with Sign In + Create An Account) | "My Account" button (dropdown with 9 items + Sign Out) |
+| Heart icon    | not shown in header strip                                                     | visible — direct path to `/products/favorites`         |
+| Cart icon     | shown — guest cart                                                            | shown — server-persisted cart                          |
+| Phone strip   | "Need Help? We've Got You — 844-222-8343 or Chat Now" — same in both states   | same                                                   |
+
+This means the same conceptual actions (cart, favorites) behave differently across states, and a few actions exist in only one state. The suite covers both.
+
+### What we test per state
+
+**Anonymous user (block 1)** — runs without staging credentials:
+
+- **FIND** — submit a query, land on results that reflect it
+- **AUTOCOMPLETE** — keyboard navigation through suggestions (ArrowDown + Enter)
+- **NO-RESULTS SEARCH** — empty state, not a silent homepage
+- **GET HELP CALL** — `tel:` link in the format the OS dialer accepts; header strip + footer agree
+- **CHAT NOW** — LiveChat widget loads on click; double-click does not stack instances
+- **MENU NAVIGATION** — open mega-menu, click subcategory, land on category page
+- **LOGO → HOME** — click logo from a deep page, return to `/`
+- **CART (guest)** — add to guest cart, see line item with non-zero total
+- **FAVORITES (anonymous)** — heart toggle / login-prompt behaviour, whichever the site implements
+- **REGISTRATION** — open the signup form via the avatar dropdown
+- **LOGIN** — open the passwordless sign-in form (email field + Continue With Email + OAuth alternatives)
+
+**Logged-in user (block 2)** — gated on `storage/auth.json`; skipped with a clear reason when it's absent:
+
+- **LOGOUT** — click Sign Out, the header reverts to anonymous state
+- **My Account dropdown navigation** — one journey per dropdown item: Order History, Account Settings, My Designs, My Uploads, Group Orders, Fundraisers, Online Stores. Each clicks through to its own page.
+- **CART (persisted)** — add to cart, reload, line item survives. Bug class the guest cart cannot catch.
+- **FAVORITES (persisted)** — heart a product, navigate to `/products/favorites`, the product is listed (not the empty state).
+- **Header heart icon** — direct path to `/products/favorites` without going through the dropdown.
+
+### Auth gating
+
+Logged-in tests check `existsSync("storage/auth.json")` at file load. Without it the whole `describe("logged-in user — header journeys", ...)` block skips with the message:
+
+> Skipping auth-gated journeys: storage/auth.json not present — run `npx playwright codegen --save-storage=storage/auth.json <staging-url>` once staging is healthy.
+
+Once `storage/auth.json` exists (committed only locally; gitignored), the logged-in tests run automatically.
+
+### Variant policy
+
+Each journey gets Happy + Negative + Edge variants where they add value. Variants that would not catch a real failure mode (e.g. a "negative" path for clicking the logo) are deliberately omitted, not padded.
 
 ## Architecture
 
@@ -94,9 +143,9 @@ Browsers configured as Playwright projects: `chromium-desktop` (1440×900), `mob
 Measured locally against staging (M-series Mac, no other load):
 
 | Subset                | Tests | Wall time |
-| --------------------- | -----:| ---------:|
-| P1 only               | 88    | ~1m 30s   |
-| Full suite (P1+P2+P3) | ~106  | ~1m 50s   |
+| --------------------- | ----: | --------: |
+| P1 only               |    88 |   ~1m 30s |
+| Full suite (P1+P2+P3) |  ~106 |   ~1m 50s |
 
 Most of the wall time is network round-trip to staging (lazy-loaded Web Components, third-party scripts). Sharded 4× in CI the P1 suite is well under the 2-minute PR-gate target.
 
@@ -137,4 +186,4 @@ Patterns surveyed against high-quality public Playwright suites and worth incorp
 - Visual baseline review platform (Argos / Percy / Chromatic) for designer signoff workflow
 - `CODEOWNERS`-driven contract diff for marketing-driven path changes (already in `.github/CODEOWNERS`)
 
-# 
+#

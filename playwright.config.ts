@@ -22,11 +22,32 @@ export default defineConfig({
   },
   projects: [
     {
+      // Verifies storage/auth.json is still usable before logged-in tests run.
+      // Skips silently when storage/auth.json is absent — the logged-in
+      // describe block in user-journeys.spec.ts handles that case itself.
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       name: "chromium-desktop",
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
       },
+    },
+    {
+      // Same as chromium-desktop but with the saved auth state attached and
+      // gated by the setup project. Use when running logged-in journeys
+      // explicitly: `npx playwright test --project=chromium-desktop-authed`.
+      name: "chromium-desktop-authed",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        storageState: "storage/auth.json",
+      },
+      dependencies: ["setup"],
+      testMatch: /user-journeys\.spec\.ts/,
+      grep: /logged-in user/,
     },
     {
       name: "mobile-chrome",
