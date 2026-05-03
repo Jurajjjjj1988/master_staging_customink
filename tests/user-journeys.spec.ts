@@ -1070,7 +1070,15 @@ test.describe("logged-in user — header journeys", () => {
         .or(page.getByRole("menuitem", { name: /sign out|log out/i }));
       await signOut.first().click();
 
-      await expect(header.signInLink).toBeVisible();
+      // Sign-out goes through a cross-domain redirect chain
+      // (account.staging → /sign_out → back to www-master). The header
+      // re-renders only after the round-trip lands. Assert the logged-in
+      // affordance is gone first, THEN that the anonymous Sign In link
+      // is back. Generous timeout for the cross-domain hop.
+      await expect(header.accountMenuButton.first()).toBeHidden({
+        timeout: 20_000,
+      });
+      await expect(header.signInLink).toBeVisible({ timeout: 10_000 });
     });
   });
 
