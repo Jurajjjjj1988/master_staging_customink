@@ -104,12 +104,12 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 
 ### By chrome surface (header vs footer)
 
-| Surface                   | Tests | Examples                                                                                                                                                      |
-| ------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Header**                |   ~50 | Search, autocomplete, mega-menu open + Escape, logo, cart icon, registration (2 entries), login, account dropdown (7 items + LOGOUT), header heart, skip-link |
-| **Footer**                |   ~24 | All About Us / Your Account (auth-redirect) / Contact / Service Center links, Follow Us socials (5 external + Blog), YouTube embed, Send-Us-Email             |
-| **Header AND footer**     |    ~7 | axe-core scans (header + footer separately), cross-page render consistency (both must appear on every primary route), visual snapshots of stable footer rows  |
-| **Cross-cutting / other** |   ~12 | Cookie consent banner, helpers unit tests, auth.setup, regression baselines, responsive breakpoints, monitorPageHealth fixture                                |
+| Surface                   | Tests | Examples                                                                                                                                                                                                                           |
+| ------------------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**                |   ~50 | Search, autocomplete, mega-menu open + Escape, logo, cart icon, registration (2 entries), login, account dropdown (7 items + LOGOUT), header heart, skip-link                                                                      |
+| **Footer**                |   ~24 | All About Us / Your Account (auth-redirect) / Contact / Service Center links, Follow Us socials (5 external + Blog), YouTube embed, Send-Us-Email                                                                                  |
+| **Header AND footer**     |    ~7 | axe-core scans (header + footer separately), cross-page render consistency (both must appear on every primary route), visual snapshots of stable footer rows                                                                       |
+| **Cross-cutting / other** |   ~17 | Cookie consent banner (5), helpers unit tests (5), regression baselines (3) — no empty/`javascript:` hrefs, structurally valid hrefs, copyright year, auth.setup (1), responsive breakpoints (2), `monitorPageHealth` auto-fixture |
 
 ### Auth gating
 
