@@ -38,7 +38,11 @@ export default [
     //     click — computing test data, not asserting state.
     //   - one networkidle in the mega-menu test where the panel needs
     //     all its lazy chunks before the click is meaningful.
-    files: ["tests/user-journeys.spec.ts", "tests/auth.setup.ts"],
+    files: [
+      "tests/user-journeys.spec.ts",
+      "tests/auth.setup.ts",
+      "tests/footer-links.spec.ts",
+    ],
     rules: {
       "playwright/no-skipped-test": "off",
       "playwright/no-conditional-in-test": "off",
