@@ -31,7 +31,7 @@ const SECONDARY_ACTIONS: readonly SecondaryActionCase[] = [
   },
   {
     name: "sign-in",
-    resolve: (h) => h.signIn,
+    resolve: (h) => h.signInLink,
     expectedPathFragment: /\/profiles\/users\/sign_in/,
   },
 ];
