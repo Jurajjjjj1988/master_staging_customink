@@ -2,7 +2,15 @@ import type { Page, Locator } from "@playwright/test";
 import { escapeRegex } from "../../helpers/regex";
 
 export class HeaderComponent {
-  /** Use semantic role, not the implementation-specific custom element tag. */
+  /**
+   * Header root. The site's custom Web Components do NOT expose `role="banner"`.
+   * Two variants are used in production:
+   *   - `ci-header-prerender` on the homepage (server-side prerendered for fast paint)
+   *   - `ci-header` on internal pages (full client-side component)
+   * We match either via comma combinator. Verified stable across staging routes;
+   * if a future migration replaces both, all header tests fail loudly and this
+   * one-line update fixes them.
+   */
   readonly root: Locator;
   readonly logo: Locator;
   readonly search: Locator;
@@ -11,7 +19,7 @@ export class HeaderComponent {
   readonly favorites: Locator;
 
   constructor(private readonly page: Page) {
-    this.root = page.getByRole("banner");
+    this.root = page.locator("ci-header-prerender, ci-header").first();
     this.logo = this.root.getByRole("link", { name: /customink logo/i });
     this.search = this.root.getByRole("combobox", { name: /search/i });
     // Cart label may include a count badge ("Cart (3)") when items exist.
