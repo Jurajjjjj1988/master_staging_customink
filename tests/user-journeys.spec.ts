@@ -621,52 +621,64 @@ test.describe("@p1 journey — log in", () => {
       signIn.click(),
     ]);
 
+    // Walk & Watch confirmed: sign-in is passwordless on this site — email
+    // field + "Continue With Email" + OAuth alternatives + "Create an account"
+    // bottom link. NO password field. Asserting one would falsely accept a
+    // regression that introduced password-based sign-in.
     await expect(
-      page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i)),
+      page.getByLabel(/enter email address/i).or(page.getByLabel(/email/i)),
     ).toBeVisible();
     await expect(
-      page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /sign in|log in/i }),
+      page.getByRole("button", { name: /continue with email/i }),
     ).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: /continue with google/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /create an account/i }),
+    ).toBeVisible();
   });
 
-  test("negative: invalid credentials surface an error and keep the user on the form", async ({
+  test("negative: invalid email format produces validation feedback before any send", async ({
     page,
   }) => {
     await page.goto("/profiles/users/sign_in");
 
     const emailField = page
-      .getByLabel(/email/i)
-      .or(page.getByPlaceholder(/email/i))
+      .getByLabel(/enter email address/i)
+      .or(page.getByLabel(/email/i))
       .first();
     test.skip(
       (await emailField.count()) === 0,
       "sign-in form not reachable on this deployment",
     );
 
-    await emailField.fill(`wrong+${Date.now()}@example.com`);
+    await emailField.fill("not-an-email");
     await page
-      .getByLabel(/password/i)
-      .or(page.getByPlaceholder(/password/i))
-      .first()
-      .fill("definitelyWrongPassword!");
-
-    await page
-      .getByRole("button", { name: /sign in|log in/i })
+      .getByRole("main")
+      .getByRole("button", { name: /continue with email/i })
       .first()
       .click();
     await page.waitForLoadState("domcontentloaded");
 
-    // The user must still be on the sign-in form (or a same-form re-render);
-    // an actionable error message must be visible.
-    expect(page.url()).toMatch(/sign_in|users\/sign_in/);
-    await expect(
-      page.getByText(
-        /invalid|incorrect|did not match|couldn['’]t (sign you in|find)/i,
-      ),
-    ).toBeVisible({ timeout: 10_000 });
+    // Either native browser validation kicks in OR a server-side message
+    // rejects the submit. A silent navigation to the OTP step would be the
+    // regression to catch — passwordless sign-in must validate the email
+    // shape before sending the magic link.
+    const native = await emailField
+      .evaluate(
+        (el: HTMLInputElement) => !el.validity.valid && !!el.validationMessage,
+      )
+      .catch(() => false);
+    const serverMessage = await page
+      .getByText(/invalid|enter a valid|not a valid/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    expect(
+      native || serverMessage,
+      "expected validation feedback for invalid email",
+    ).toBe(true);
   });
 
   test("edge: empty form submission is blocked and stays on the page", async ({
