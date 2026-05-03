@@ -108,8 +108,14 @@ export const test = base.extend<Fixtures, Options>({
       const failedRequests: string[] = [];
 
       page.on("console", (msg) => {
-        if (msg.type() === "error" && !isAllowlistedConsole(msg.text())) {
-          consoleErrors.push(msg.text());
+        // Surface both errors AND warnings; warnings catch silent regressions
+        // (deprecation notices, mixed content, security policy violations) that
+        // never escalate to errors but ship to users today and break tomorrow.
+        if (
+          (msg.type() === "error" || msg.type() === "warning") &&
+          !isAllowlistedConsole(msg.text())
+        ) {
+          consoleErrors.push(`[${msg.type()}] ${msg.text()}`);
         }
       });
       page.on("pageerror", (err) => {

@@ -197,6 +197,21 @@ Both workflows pin the Playwright browser cache by `package-lock.json` hash — 
 
 ---
 
+## Performance baseline
+
+Measured on a single MacBook (M-series, no other load) against the live staging environment:
+
+| Subset                | Tests | Wall time |
+| --------------------- | ----: | --------: |
+| P1 only               |    80 |   ~1m 25s |
+| Full suite (P1+P2+P3) |   ~99 |   ~1m 50s |
+
+Most of the wall time is network round-trip to staging (cold-CDN paint, lazy-loaded Web Components, third-party scripts), not test execution. Sharded across 4 CI runners the P1 suite is well under the 2-minute PR-gate target documented in spec §10.1.
+
+## Architecture decisions
+
+The "why" behind the major engineering decisions on this project lives in [`docs/adr/`](docs/adr/README.md) — six short Architecture Decision Records covering POM scope, the cross-cutting page-health fixture, the custom-element selector, the allowlist policy, the visual regression scope, and the baseline pattern for known-offender tests. They are the document I'd hand to the next engineer who joins the project.
+
 ## Roadmap
 
 Patterns surveyed against high-quality public Playwright suites and worth incorporating in future iterations:
