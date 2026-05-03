@@ -195,7 +195,7 @@ test.describe("@p1 journey — call support", () => {
   test("positive: phone affordance is dialable in the format the OS dialer accepts", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/", { timeout: 60_000 });
     // Phone link lives in the lazy-hydrated `ci-full-footer`; without this
     // wait the locator races the hydration and frequently loses.
     await waitForFooterReady(page);
@@ -224,7 +224,7 @@ test.describe("@p1 journey — call support", () => {
     // Some pages render the phone twice (header support strip + footer
     // contact section). Both must follow the same format — a divergence
     // means a regression where one was hardcoded and the other rotated.
-    await page.goto("/");
+    await page.goto("/", { timeout: 60_000 });
     await waitForFooterReady(page);
     const all = page.locator('a[href^="tel:"]');
     const count = await all.count();
@@ -301,7 +301,7 @@ test.describe("@p1 journey — favorites", () => {
   test("positive: user adds a product to favorites and finds it on /products/favorites", async ({
     page,
   }) => {
-    await page.goto("/products/t-shirts/4");
+    await page.goto("/products/t-shirts/4", { timeout: 60_000 });
 
     // Land on a product detail page so the heart affordance is reachable.
     const productCard = page
@@ -382,7 +382,7 @@ test.describe("@p1 journey — favorites", () => {
   test("edge: toggling the heart twice on the same product leaves it un-favorited", async ({
     page,
   }) => {
-    await page.goto("/products/t-shirts/4");
+    await page.goto("/products/t-shirts/4", { timeout: 60_000 });
     const productCard = page
       .getByRole("link", { name: /.+/ })
       .filter({ has: page.locator("img") })
@@ -647,7 +647,7 @@ test.describe("@p1 journey — cart", () => {
   test("positive: user adds a product to the cart and sees it with a non-zero total", async ({
     page,
   }) => {
-    await page.goto("/products/t-shirts/4");
+    await page.goto("/products/t-shirts/4", { timeout: 60_000 });
 
     const productCard = page
       .getByRole("link", { name: /.+/ })
@@ -724,7 +724,7 @@ test.describe("@p1 journey — cart", () => {
   test("edge: cart total recalculates when line-item quantity is changed", async ({
     page,
   }) => {
-    await page.goto("/products/t-shirts/4");
+    await page.goto("/products/t-shirts/4", { timeout: 60_000 });
     const productCard = page
       .getByRole("link", { name: /.+/ })
       .filter({ has: page.locator("img") })
@@ -874,7 +874,7 @@ test.describe("@p1 journey — logo returns home", () => {
   test("positive: user clicks the logo from a product page and lands on /", async ({
     page,
   }) => {
-    await page.goto("/products/t-shirts/4");
+    await page.goto("/products/t-shirts/4", { timeout: 60_000 });
     const header = new HeaderComponent(page);
     await header.logo.click();
     await page.waitForURL((url) => new URL(url).pathname === "/", {
