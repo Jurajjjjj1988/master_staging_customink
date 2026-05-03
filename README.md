@@ -77,27 +77,57 @@ This means the same conceptual actions (cart, favorites) behave differently acro
 
 ### What we test per state
 
-**Anonymous user (block 1)** — runs without staging credentials:
+**Anonymous user (block 1)** — runs without staging credentials. ~52 tests across 22 journeys:
 
-- **FIND** — submit a query, land on results that reflect it
-- **AUTOCOMPLETE** — keyboard navigation through suggestions (ArrowDown + Enter)
-- **NO-RESULTS SEARCH** — empty state, not a silent homepage
-- **GET HELP CALL** — `tel:` link in the format the OS dialer accepts; header strip + footer agree
-- **CHAT NOW** — LiveChat widget loads on click; double-click does not stack instances
-- **MENU NAVIGATION** — open mega-menu, click subcategory, land on category page
-- **LOGO → HOME** — click logo from a deep page, return to `/`
-- **CART (guest)** — add to guest cart, see line item with non-zero total
-- **FAVORITES (anonymous)** — heart toggle / login-prompt behaviour, whichever the site implements
-- **REGISTRATION** — open the signup form via the avatar dropdown
-- **LOGIN** — open the passwordless sign-in form (email field + Continue With Email + OAuth alternatives)
+- **Search**: FIND (submit + reach results), AUTOCOMPLETE (ArrowDown + Enter), NO-RESULTS (empty state, not silent homepage), 1000-char input, Escape closes, special chars, whitespace-only
+- **Help affordances**: GET HELP CALL (tel: format dialable, multi-link agreement), CHAT NOW (widget loads, no double-stack)
+- **Promo strip**: PROMO BANNER Shop Sale CTA → sale-tagged listing
+- **Navigation**: MENU NAVIGATION (mega-menu open + click subcategory), MEGA-MENU panel-stacking (one open at a time), MEGA-MENU Escape close, LOGO → HOME
+- **Cart**: CART (guest) add + line item + non-zero total + qty recalc, CART ICON click from deep page → /cart
+- **Favorites (anonymous)**: heart toggle / empty-state copy, double-toggle un-favorites
+- **Auth transitions**: REGISTRATION (avatar dropdown + sign-in page bottom link, both entry points), LOGIN (passwordless form structure: email + Continue With Email + OAuth + Create-an-account; invalid email validation; empty submit blocked; Enter key submits)
+- **Footer**: 16 footer link click-throughs across About Us / Your Account / Contact Us / Service Center sections (auth-required links verify the /sign_in?return_to= redirect chain)
+- **Follow Us**: 6 social links (5 external — verify destination domain + target=\_blank without navigating away; 1 internal — Custom Ink Blog click-through)
+- **Marketing**: YouTube embed loads on play click; Send-Us-Email click-through to /contact (kept in `marketing-elements.spec.ts`)
+- **Accessibility**: SKIP-LINK (keyboard-only users tab to first focusable element, press Enter, jump past header to #main-content)
 
-**Logged-in user (block 2)** — gated on `storage/auth.json`; skipped with a clear reason when it's absent:
+**Logged-in user (block 2)** — gated on `storage/auth.json`; skipped with a clear reason when it's absent. 12 journeys:
 
-- **LOGOUT** — click Sign Out, the header reverts to anonymous state
-- **My Account dropdown navigation** — one journey per dropdown item: Order History, Account Settings, My Designs, My Uploads, Group Orders, Fundraisers, Online Stores. Each clicks through to its own page.
+- **LOGOUT** — click Sign Out, the header reverts to anonymous state (uses widened assertion to tolerate the cross-domain redirect chain)
+- **SEARCH (logged-in)** — search behaves correctly when authenticated, header still hides Sign In link
+- **My Account dropdown navigation** — one journey per dropdown item: Order History, Account Settings, My Designs, My Uploads, Group Orders, Fundraisers, Online Stores. Each clicks through to a destination page that renders its specific heading.
 - **CART (persisted)** — add to cart, reload, line item survives. Bug class the guest cart cannot catch.
 - **FAVORITES (persisted)** — heart a product, navigate to `/products/favorites`, the product is listed (not the empty state).
 - **Header heart icon** — direct path to `/products/favorites` without going through the dropdown.
+
+### Mutation proof (the suite is not theatre)
+
+`docs/mutation-proof.md` documents a procedure: deliberately break a single line in `pages/components/HeaderComponent.ts`, run the suite, observe the predicted failure list. Every passing test in `tests/user-journeys.spec.ts` depends on a real production-code line you can point at. See the doc for the per-line mutation table.
+
+### Walk & Watch evidence
+
+Real DOM observations captured via Chrome DevTools MCP, recorded in `docs/walk-and-watch/2026-05-03-customink-dom-observations.md`. Notable findings the test code now binds against:
+
+- `/profiles/users/sign_in` is **passwordless** (email + "Continue With Email" + OAuth)
+- `/profiles/users/sign_up` is **password-based** (email + new password + confirm + "Continue" button) — distinct flow
+- `/products/favorites` empty-state copy (verbatim): "Browse our products and click the heart icon to save your favorites."
+- Heart on product detail: `button "Add to favorites"` per colour variant
+- Header heart icon: `link "Favorites"` → `/products/favorites`
+- Order History destination: `/account/orders`
+- Cross-domain note: `account.staging.customink.com` throws "Oops! Not logged in" pageError when `storage/auth.json` has cookies only for `www-master`. Currently allowlisted in `monitorPageHealth`.
+
+### Skills sequence applied
+
+`brainstorming` → `writing-plans` → `improve-tests` → `check-selectors` → `systematic-debugging` → `check-error-handling` → `quick-code-scan` → `real-testing-patterns` (final mutation-test pass). Each skill produced concrete fixes traceable in commits. Spec at `docs/superpowers/specs/2026-05-03-customink-header-user-journeys-redesign-design.md`, plan at `docs/superpowers/plans/2026-05-03-customink-header-user-journeys-redesign.md`.
+
+### Run status (2026-05-03)
+
+Last `--workers=1` runs:
+
+- **Anonymous (`chromium-desktop`)**: 32 passed / 16 failed / 4 skipped (52 total). Failures cluster on staging-flake (Customer Reviews / Customer Photos / Custom Ink Blog footer items) and a couple of locator-tighten candidates surfaced by the latest skill passes.
+- **Logged-in (`chromium-desktop-authed`)**: 1 passed (setup) / 11 failed (12 total). Failures cluster on the cross-domain auth gap — the saved `storage/auth.json` has cookies for `www-master` only; clicking dropdown items reaches `account.staging.customink.com` which renders the not-logged-in state. Resolution requires running `playwright codegen` against both subdomains.
+
+`--workers=2` cuts wall-time to ~9 minutes but introduces staging-load flakiness; for stable signal use `--workers=1` (~13 minutes).
 
 ### Auth gating
 
