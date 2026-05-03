@@ -372,10 +372,10 @@ test.describe("@p1 journey — favorites", () => {
       header.favorites.click(),
     ]);
 
+    // Real empty-state copy observed via Chrome DevTools MCP on 2026-05-03:
+    // "Browse our products and click the heart icon to save your favorites."
     await expect(
-      page.getByText(
-        /no favorites yet|sign in to save|haven['’]t saved any|create an account to save/i,
-      ),
+      page.getByText(/browse our products and click the heart icon/i),
     ).toBeVisible({ timeout: 10_000 });
   });
 
