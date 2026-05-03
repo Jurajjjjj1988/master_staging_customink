@@ -915,7 +915,10 @@ test.describe("logged-in user — header journeys", () => {
       await expect(header.accountMenuButton.first()).toBeVisible();
 
       await header.accountMenuButton.first().click();
-      const signOut = page.getByRole("link", { name: /sign out|log out/i });
+      const signOut = page
+        .getByRole("link", { name: /sign out|log out/i })
+        .or(page.getByRole("button", { name: /sign out|log out/i }))
+        .or(page.getByRole("menuitem", { name: /sign out|log out/i }));
       await signOut.first().click();
 
       await expect(header.signInLink).toBeVisible();
