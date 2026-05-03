@@ -30,6 +30,36 @@ npm run check    # typecheck + lint + P1 suite
 
 **Total: 49 functional scenarios + 1 cross-cutting fixture, 88 P1 tests when expanded across data-driven cases.**
 
+### By priority
+
+| Priority | Tests | What it gates                                                                                    |
+| -------- | ----: | ------------------------------------------------------------------------------------------------ |
+| P1       |    32 | PR check; deploy blocker. Every linked-revenue path or a11y-baseline test.                       |
+| P2       |    15 | Nightly. Important but not deploy-blocking (autocomplete UX, settings, marketing surfaces).      |
+| P3       |     2 | Nightly only. Visual baselines + LCP budget — informational signals on trend, not gating checks. |
+
+### By dimension
+
+| Dimension     | Coverage source                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Functional    | All sections above except Performance and Visual                                                                     |
+| Visual        | 2 region snapshots (footer legal row, footer Follow-Us icons row) + 1 bounding-box layout test                       |
+| Accessibility | axe-core scan ×2 (header + footer), keyboard navigation, cookie banner keyboard operability, alt text + button names |
+| Performance   | Header LCP < 3 s (P3 nightly only)                                                                                   |
+| Security      | XSS escape in search, no `javascript:` hrefs anywhere, no tracking cookies post-rejection                            |
+| SEO           | `<head>` essentials (title, description, canonical, og:image, viewport), JSON-LD validity, robots.txt + sitemap      |
+| Cross-cutting | `monitorPageHealth` runs on every test (console errors + warnings + 4xx/5xx + broken images + mixed content)         |
+
+### By Playwright project
+
+| Project            | Browser            | Viewport   | When it runs                                        |
+| ------------------ | ------------------ | ---------- | --------------------------------------------------- |
+| `chromium-desktop` | Chromium           | 1440 × 900 | PR + nightly                                        |
+| `mobile-chrome`    | Chromium (Pixel 5) | mobile     | PR + nightly                                        |
+| `mobile-safari`    | WebKit (iPhone 13) | mobile     | nightly                                             |
+| `webkit-desktop`   | WebKit             | desktop    | nightly                                             |
+| `prod-smoke`       | Chromium           | 1440 × 900 | manual `npm run test:prod-smoke` against production |
+
 The full catalog — every scenario with the exact assertion, technique, and regression class it catches — is in **[`docs/TEST-CATALOG.md`](docs/TEST-CATALOG.md)**. The "why" behind major engineering decisions is in [`docs/adr/`](docs/adr/README.md).
 
 ## Architecture
