@@ -743,6 +743,7 @@ One visual test (#23) — `should_match_visual_baseline_for_footer_legal_section
 | OQ-4 | Allowlist contents for `monitorPageHealth`                                                                                                   | Populate empirically during first 1–2 weeks of running.                                                                |
 | OQ-5 | Cookie banner: confirm `role="region"` + accessible name "Cookie banner" is what staging actually exposes (vs `role="dialog"` from OneTrust) | First implementation pass — the `.or()` fallback to `#onetrust-banner-sdk` already covers both.                        |
 | OQ-6 | `#main-content` skip-link target — confirm an element with `id="main-content"` actually exists                                               | Test #4 verifies via `expect(page.locator('#main-content')).toBeAttached()`.                                           |
+| OQ-7 | OneTrust banner does not implement a strict focus trap on this build — Tab presses escape the modal into the page beneath                    | Test #18 verifies the weaker WCAG 2.1.1 keyboard-operability invariant (every banner button is reachable + tabbable).  |
 
 ## 16. Risks & Mitigations
 
