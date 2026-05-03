@@ -369,6 +369,28 @@ test.describe("@p1 journey — sign-in submits on Enter", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// 4e. SKIP LINK — keyboard-only users jump past the header to main content
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — skip to main content", () => {
+  test("positive: keyboard user can skip past the header straight to main content", async ({
+    page,
+  }) => {
+    await page.goto("/", { timeout: 60_000 });
+
+    // The skip link is the first focusable element — it appears only on
+    // keyboard focus. Tab to it, press Enter, and verify the URL hash
+    // points at the main landmark.
+    const skipLink = page.getByRole("link", { name: /skip to main content/i });
+    await expect(skipLink.first()).toHaveAttribute("href", "#main-content");
+    await expect(page.locator("#main-content")).toBeAttached();
+
+    await skipLink.first().click();
+    await expect(page).toHaveURL(/#main-content/);
+  });
+});
+
 test.describe("@p1 journey — chat now", () => {
   test("positive: clicking Chat Now opens the LiveChat widget", async ({
     page,
@@ -774,6 +796,40 @@ test.describe("@p1 journey — registration", () => {
 // ---------------------------------------------------------------------------
 // 8. LOGIN — sign in via the avatar dropdown
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// 7b. REGISTRATION alt entry — bottom link on sign-in page
+// ---------------------------------------------------------------------------
+
+test.describe("@p1 journey — registration via sign-in page link", () => {
+  test("positive: user on the sign-in page clicks 'Create an account' and reaches the signup form", async ({
+    page,
+  }) => {
+    // The sign-in page exposes a secondary entry into registration via the
+    // bottom link. A user who landed on /sign_in by mistake should be one
+    // click away from the right form.
+    await page.goto("/profiles/users/sign_in", { timeout: 60_000 });
+
+    const createLink = page
+      .getByRole("link", { name: /create an account/i })
+      .first();
+    await expect(createLink).toBeVisible({ timeout: 10_000 });
+
+    await Promise.all([
+      page.waitForURL(/sign_up|register/i, { timeout: 15_000 }),
+      createLink.click(),
+    ]);
+
+    // Real sign-up form rendered (Walk & Watch confirmed: email + password
+    // + confirm + Continue button).
+    await expect(
+      page.getByLabel(/enter email address/i).or(page.getByLabel(/email/i)),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^continue$/i }),
+    ).toBeEnabled();
+  });
+});
 
 test.describe("@p1 journey — log in", () => {
   test("positive: user opens sign-in from the avatar and sees a real sign-in form", async ({
