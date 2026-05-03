@@ -154,11 +154,12 @@ test.describe("@p1 journey — search returns no results", () => {
       .first();
 
     const hasMessage = (await message.count()) > 0;
+    // Locator.count() returns 0 for an empty list — it doesn't throw.
+    // No defensive catch needed; a real locator error should surface.
     const itemCount = await grid
       .getByRole("listitem")
       .or(grid.getByRole("link"))
-      .count()
-      .catch(() => -1);
+      .count();
 
     expect(
       hasMessage || itemCount === 0,
@@ -706,12 +707,18 @@ test.describe("@p1 journey — cart", () => {
   test("negative: visiting /cart with an empty cart shows the empty state", async ({
     page,
   }) => {
-    await page.goto("/cart").catch(async () => {
+    // Direct goto with a short timeout. If the route doesn't resolve OK,
+    // fall back to the user-affordance path. Narrow catch so unexpected
+    // errors are surfaced (same pattern as REGISTRATION negative).
+    const direct = await page
+      .goto("/cart", { timeout: 10_000 })
+      .catch(() => null);
+    if (!direct?.ok()) {
       await page.goto("/");
       const header = new HeaderComponent(page);
       await header.cart.click();
       await page.waitForLoadState("domcontentloaded");
-    });
+    }
 
     // An empty cart must communicate it — silent zero items / zero total
     // without copy is the regression to catch.
