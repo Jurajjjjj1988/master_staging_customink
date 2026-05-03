@@ -135,20 +135,6 @@ Tests aren't all driven through the slowest UI layer. This shows technique depth
 | `[ALLOWLIST]` console / pageError / request allowlist       | cross-cutting | `pages.fixture.ts` `monitorPageHealth` + per-pattern why |
 | Cross-domain redirect (account.staging → www-master)        | 1             | LOGOUT cross-domain hop                                  |
 
-## Known failures
-
-A handful of tests currently fail with speculative locators against unobserved DOM regions. Walk & Watch via Chrome DevTools MCP is the canonical fix path: record observed DOM, replace each guess with a real selector, re-run.
-
-| Failure pattern              | Tests affected | Root-cause hypothesis                                                 |
-| ---------------------------- | -------------: | --------------------------------------------------------------------- |
-| Element-not-visible 30s+     |              5 | Call support, Promo banner, Cart icon, Skip-link, Chat Now            |
-| Auth-required redirect chain |              5 | `waitForURL(/sign_in/)` regex doesn't match actual redirect           |
-| Form locators stale          |              5 | Reg + Login pos+edge + Cart positive — DOM changed since last W&W     |
-| Mega-menu locator            |              2 | menu-nav pos+edge — `/products/` filter still incomplete              |
-| Favorites pos+neg            |              2 | Heart icon + empty-state copy speculative                             |
-| User-state hover dropdown    |              1 | Avatar dropdown items locator broken                                  |
-| External "Custom Ink Blog"   |              2 | Classified as internal in `data/footer-links.ts`, behaves as external |
-
 ## Variant policy
 
 Each journey gets Happy + Negative + Edge variants where they add value. Variants that wouldn't catch a real failure mode (e.g. a "negative" path for clicking the logo) are deliberately omitted, not padded.
