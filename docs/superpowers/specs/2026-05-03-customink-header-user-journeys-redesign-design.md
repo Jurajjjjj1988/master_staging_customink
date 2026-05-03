@@ -30,14 +30,12 @@ What a user without an account can do. Runs without `storage/auth.json`.
 8. **CART (guest)** — user adds a product to the guest cart and sees a line item with a non-zero total. Anonymous cart should persist in localStorage / cookie.
 9. **FAVORITES (anonymous)** — user clicks the heart on a product. CustomInk's actual behavior unknown until Walk & Watch — either localStorage-based (heart toggles + persists in this browser) OR login-gated (clicking heart redirects to sign-in). Test verifies _whichever_ is the real behavior.
 
-### Block 2: Authentication — sign-in & registration flows (2 journeys)
+REGISTRATION and LOGIN are anonymous-user journeys (the anonymous user clicks header affordances to reach those forms) and live in Block 1:
 
-Transitions from anonymous to logged-in. Form-structure assertions only — magic link / OTP / email verification steps are out of automation scope and skip with reason.
-
-10. **REGISTRATION** — user opens the signup form via the avatar dropdown ("Create An Account") OR via the sign-in page bottom link. Form renders, invalid-email validation works, empty submit blocked.
+10. **REGISTRATION** — user opens the signup form via the avatar dropdown ("Create An Account") OR via the sign-in page bottom link. Form renders, invalid-email validation works, empty submit blocked. Magic link / email verification step skipped with reason.
 11. **LOGIN** — user opens the sign-in form via the avatar dropdown. Passwordless form renders (email field + "Continue With Email" button + OAuth alternatives + "Create an account" link). Invalid email validation works, empty submit blocked.
 
-### Block 3: Logged-in user (12 journeys)
+### Block 2: Logged-in user (12 journeys)
 
 Auth-gated. Skip with reason when `storage/auth.json` absent. Tests run as soon as `npx playwright codegen --save-storage=storage/auth.json …` produces the state file.
 
@@ -68,7 +66,7 @@ Each of 13–19 follows the same shape: open dropdown, click the item by accessi
 
 22. **Heart icon in header strip** — when logged in, a heart icon appears in the header next to "My Account". Clicking it navigates directly to `/products/favorites` without going through the dropdown — alternative path users actually use.
 
-#### What is NOT in Block 3
+#### What is NOT in Block 2
 
 - Submenu items inside any account page (e.g. tabs inside Order History) — out of header-suite scope
 - Cart drawer interactions — separate from the cart-page journey
@@ -76,9 +74,8 @@ Each of 13–19 follows the same shape: open dropdown, click the item by accessi
 
 ### Total journey count
 
-- Block 1 (anonymous): 9 journeys
-- Block 2 (auth transitions): 2 journeys
-- Block 3 (logged-in): 11 journeys (LOGOUT, 7 dropdown items, 2 dual-state, header heart icon)
+- Block 1 (anonymous): 11 journeys (incl. LOGIN + REGISTRATION as the anonymous user's auth-transition affordances)
+- Block 2 (logged-in): 11 journeys (LOGOUT, 7 dropdown items, 2 dual-state, header heart icon)
 
 = **22 journeys** total. With Happy / Negative / Edge variants where they add value (per the Test variant policy section above), the test count lands around 35–40 — auth-gated tests skip with reason until `storage/auth.json` is provided.
 
