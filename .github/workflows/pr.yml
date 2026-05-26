@@ -1,0 +1,57 @@
+name: PR - P1 Smoke
+
+# Fast feedback for pull requests: runs only @p1-tagged tests
+# across the two browsers we care about most for PR gating.
+# Target wall time: < 2 minutes (4-way sharded, parallel matrix).
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  BASE_URL: https://www-master.staging.customink.com
+
+jobs:
+  test:
+    name: ${{ matrix.project }} (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    strategy:
+      # Don't cancel other shards/projects when one fails - we want the full picture.
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, mobile-chrome]
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Doc/test § drift gate runs before any Playwright work so a stale spec ↔
+      # describe-title mismatch fails the PR fast (< 1 s) instead of after the
+      # full smoke run. Fails the job on exit 1.
+      - name: Doc/test § drift check
+        run: npm run check:drift
+
+      # Both PR projects use the Chromium binary, so a single install is enough.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run @p1 tests
+        run: npx playwright test --project=${{ matrix.project }} --grep @p1 --shard=${{ matrix.shard }}/4
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.project }}-shard-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 7
