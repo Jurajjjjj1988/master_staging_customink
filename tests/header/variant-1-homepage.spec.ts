@@ -16,6 +16,13 @@ import { TIMEOUTS } from "../../helpers/timeouts";
  *   §1.7 Edge cases                   → V1.7 — known regressions + open questions
  */
 
+// Serial mode: this spec is the biggest single-file load (16 element probes
+// + 5 flyouts + edge cases), each requiring full hydration of <ci-header>.
+// Parallel mode across workers triggers per-IP budget throttling on staging
+// and hydration races on the inventory loop. Per-file serial isolates the
+// race without forcing the whole suite to serialize.
+test.describe.configure({ mode: "serial" });
+
 test.describe("@p1 V1.2 Functional spec — element inventory (16 elements)", () => {
   // Filter to elements visible on desktop in anonymous (guest) state.
   // Element #14 (Promo "Shop Sale") is marketing-rotated — handled below as

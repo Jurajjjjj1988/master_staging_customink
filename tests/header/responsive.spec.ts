@@ -9,6 +9,13 @@ import { TIMEOUTS } from "../../helpers/timeouts";
  * viewport assertion — extend by adding to `data/breakpoints.ts`.
  */
 
+// Serial mode: viewport-switching sweep across many breakpoints hammers a
+// single staging endpoint with back-to-back goto() + hydration waits.
+// Parallel mode across workers triggers per-IP budget throttling and
+// intermittently fails the late-hydration assertions. Per-file serial
+// isolates the race without forcing the whole suite to serialize.
+test.describe.configure({ mode: "serial" });
+
 for (const bp of BREAKPOINTS) {
   test.describe(`@p1 V1.5 Responsive — ${bp.name} (${bp.viewport.width}×${bp.viewport.height})`, () => {
     test.use({ viewport: bp.viewport });

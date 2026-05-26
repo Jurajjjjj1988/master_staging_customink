@@ -10,11 +10,12 @@ export default defineConfig({
   // Staging is intermittent (A/B routing, lazy hydration races, intermittent CMS).
   // 1 local retry catches the common single-flake class without masking real bugs.
   retries: process.env.CI ? 2 : 1,
-  // Local: 3 workers — empirical sweet spot on this 8-core box. 2 was
-  // throughput-limited (~7.9 min wall for chromium-desktop); 4+ trips
-  // staging's per-IP request budget and bumps the flake rate.
-  // CI: 4 workers (sharded via --shard, so per-shard concurrency is ≤ 4).
-  workers: process.env.CI ? 4 : 3,
+  // Local: 2 workers — staging gets unhappy under 3+ concurrent sessions
+  // (verified empirically — 3 workers shaved wall time 39% but tripled the
+  // flake rate by triggering per-IP request budget throttling). 2 = baseline
+  // known-good. CI stays at 4 (sharded via --shard, so per-shard concurrency
+  // is ≤ 4 against a different CI IP).
+  workers: process.env.CI ? 4 : 2,
   reporter: [["html", { open: "never" }], ["list"], ["github"]],
   // Default 30s test timeout is shorter than navigationTimeout (60s) — bump
   // to 60s so a slow staging cold-load goto + a few subsequent assertions

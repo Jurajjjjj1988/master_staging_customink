@@ -8,6 +8,12 @@ import { TIMEOUTS } from "../../helpers/timeouts";
  * personalisation cookies that influence Lab redirect.
  */
 
+// Serial mode: cookie-state-dependent assertions (Optimizely dataLayer
+// reads, auth cookie checks) race with parallel hydration on the same
+// staging endpoint. Per-file serial keeps the cookie state isolated and
+// avoids per-IP throttling on the dataLayer poll window.
+test.describe.configure({ mode: "serial" });
+
 test.describe("@p2 V1.6 Optimizely A/B — Ships 24 Hours test bucket", () => {
   for (const ab of AB_TESTS) {
     test(`dataLayer.ab_test_name reflects "${ab.dataLayerName}"`, async ({
