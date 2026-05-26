@@ -1,9 +1,30 @@
 import { test as base, expect, type Page } from "@playwright/test";
+import {
+  isAllowlistedConsole,
+  isAllowlistedRequest,
+  isAllowlistedPageError,
+  isPlaceholderImage,
+} from "../helpers/known-issues";
+import { HeaderComponent } from "../pages/components/HeaderComponent";
+import { HeaderV2Cart } from "../pages/components/HeaderV2Cart";
+import { HeaderV3Lab } from "../pages/components/HeaderV3Lab";
+import { HeaderV4Accounts } from "../pages/components/HeaderV4Accounts";
+import { MegaMenu } from "../pages/components/MegaMenu";
+import { FooterComponent } from "../pages/components/FooterComponent";
+import { CookieBanner } from "../pages/components/CookieBanner";
 
 type Fixtures = {
   cookieDismissed: void;
   monitorPageHealth: void;
   authenticated: Page;
+  // Page Objects — injected per-test, no `new` in spec bodies.
+  header: HeaderComponent;
+  headerV2: HeaderV2Cart;
+  headerV3: HeaderV3Lab;
+  headerV4: HeaderV4Accounts;
+  megaMenu: MegaMenu;
+  footer: FooterComponent;
+  cookieBanner: CookieBanner;
 };
 
 /**
@@ -15,71 +36,8 @@ type Options = {
   dismissCookie: boolean;
 };
 
-/**
- * Console messages we tolerate. Justified entries only — every entry has a reason.
- * Keep this list small; growth signals real bugs we should fix instead of silencing.
- */
-const CONSOLE_ALLOWLIST: readonly RegExp[] = [
-  // CORS: staging frontend calls production API (www.customink.com) — expected on staging env.
-  /Access to fetch at 'https:\/\/www\.customink\.com.*has been blocked by CORS/i,
-  /Failed to load resource: net::ERR_FAILED/,
-  // Header Web Component swallows the catalog feature-flag fetch failure (downstream of CORS above).
-  /Failed to fetch Catalog feature flag/i,
-  // Third-party UA-sniff in `ci-header-prerender` accesses `navigator.userAgentData.safari`
-  // which is undefined in Chromium 120+. Tracked separately; not a regression introduced here.
-  /Cannot read properties of undefined \(reading 'safari'\)/,
-  // Optimizely third-party SDK warns about unconfigured feature keys — tracked by marketing, not us.
-  /\[OPTIMIZELY\].*ERROR.*Feature key.*is not in datafile/i,
-  // Generic 404 console line that always pairs with an actual failedRequest entry — dedup.
-  /Failed to load resource: the server responded with a status of 404/i,
-];
-
-/**
- * Network requests we tolerate.
- */
-const REQUEST_ALLOWLIST: readonly RegExp[] = [
-  // Same CORS-blocked production API (network layer surfaces these as failures).
-  /https:\/\/www\.customink\.com\/(api|products)\//,
-];
-
-/**
- * Uncaught JavaScript exceptions we tolerate. Even higher bar than console errors:
- * pageErrors usually break the page, so every entry here must be a known third-party
- * issue we have decided to live with.
- */
-const PAGE_ERROR_ALLOWLIST: readonly RegExp[] = [
-  // `ci-header-prerender` calls `navigator.userAgentData.safari` which is undefined
-  // in Chromium 120+. Tracked by header team; does not affect rendered output.
-  /Cannot read properties of undefined \(reading 'safari'\)/,
-  // The search-results page (a separate app) throws ApiError objects from its API
-  // client. Out of header/footer scope; tracked by the search team.
-  /^ApiError\b/i,
-  // The /about page is rendered by the Next.js `next-frontend-web` micro-frontend
-  // and emits a minified React #418 hydration warning on this build. The page
-  // renders correctly; the warning is a known dev-time signal that does not
-  // affect users. Tracked by the next-frontend-web team.
-  /Minified React error #418/,
-  // The `account.staging.customink.com` micro-frontend throws this when our
-  // storage/auth.json has cookies only for the `www-master` host. Until
-  // cross-domain auth setup is in place, the test traverses to the login
-  // page — itself a valid (logged-out) destination.
-  /Oops! It looks like you're not logged in/i,
-];
-
-const isAllowlistedConsole = (text: string): boolean =>
-  CONSOLE_ALLOWLIST.some((re) => re.test(text));
-const isAllowlistedRequest = (url: string): boolean =>
-  REQUEST_ALLOWLIST.some((re) => re.test(url));
-const isAllowlistedPageError = (text: string): boolean =>
-  PAGE_ERROR_ALLOWLIST.some((re) => re.test(text));
-
-/**
- * `//:0` is a common React/Next placeholder that resolves to `naturalWidth === 0`
- * but is intentional (used for lazy-loaded `<img>` slots before the real src arrives).
- * Filter these out — they are not regressions.
- */
-const isPlaceholderImage = (src: string): boolean =>
-  src === "" || src.endsWith("//:0") || src === "data:,";
+// Known-issue allowlists live in helpers/known-issues.ts — adding a new
+// entry is policy, not a hack. See that file for ownership + tickets.
 
 export const test = base.extend<Fixtures, Options>({
   dismissCookie: [true, { option: true, scope: "worker" }],
@@ -226,6 +184,30 @@ export const test = base.extend<Fixtures, Options>({
     const page = await context.newPage();
     await use(page);
     await context.close();
+  },
+
+  // Page-Object fixtures — test-scoped, constructor-only (locator wiring).
+  // Each fixture is lazy: only instantiated if the test destructures it.
+  header: async ({ page }, use) => {
+    await use(new HeaderComponent(page));
+  },
+  headerV2: async ({ page }, use) => {
+    await use(new HeaderV2Cart(page));
+  },
+  headerV3: async ({ page }, use) => {
+    await use(new HeaderV3Lab(page));
+  },
+  headerV4: async ({ page }, use) => {
+    await use(new HeaderV4Accounts(page));
+  },
+  megaMenu: async ({ page }, use) => {
+    await use(new MegaMenu(page));
+  },
+  footer: async ({ page }, use) => {
+    await use(new FooterComponent(page));
+  },
+  cookieBanner: async ({ page }, use) => {
+    await use(new CookieBanner(page));
   },
 });
 

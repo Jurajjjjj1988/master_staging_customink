@@ -75,28 +75,40 @@ export class HeaderComponent {
     return this.root.getByRole("link", { name });
   }
 
-  /** Locate a mega-menu trigger button by the menu name (carries `aria-expanded`). */
+  /**
+   * Locate a mega-menu trigger button by the menu name (carries
+   * `aria-expanded`). The header hydration model emits two host elements
+   * (`ci-header-prerender` and `ci-header`) and Stencil scopes the inner
+   * trigger twice during the swap, so the role lookup can match 2+ elements
+   * mid-hydration. `.first()` collapses to the canonical one — required so
+   * the focused element and the polled-on element are the same node when
+   * `openMegaMenu` activates and a follow-up `toHaveAttribute` asserts.
+   */
   megaMenuTrigger(name: string): Locator {
-    return this.root.getByRole("button", {
-      name: new RegExp(`Open ${escapeRegex(name)} menu`, "i"),
-    });
+    return this.root
+      .getByRole("button", {
+        name: new RegExp(`Open ${escapeRegex(name)} menu`, "i"),
+      })
+      .first();
   }
 
   /**
-   * Open a mega-menu by hovering the primary nav element. Most items render as a
-   * clickable `<a>` plus an adjacent caret `<button>` — hovering the link mirrors
-   * the user path (the caret is intercepted by the link). Some items, notably
-   * "Groups & Events", render as a single `<button>` with no link companion;
-   * for those we hover the button directly.
+   * Open a mega-menu via keyboard activation on the caret `<button>`.
+   *
+   * Why not hover: on the current condensed-desktop build the caret button has
+   * computed `pointer-events: none` AND a sibling `<a class="ciHeader-subNav-link">`
+   * overlays the same area, so Playwright's hover refuses with
+   * "subtree intercepts pointer events". Live probe (2026-05-26) confirmed:
+   *   - hover / hover{force} / dispatchEvent pointerenter / mouse.move all leave
+   *     aria-expanded="false".
+   *   - focus() + Enter flips aria-expanded="true" and renders the panel.
+   * Keyboard activation also matches the WCAG 2.1.1 keyboard-accessibility path,
+   * so this POM mirrors the assistive-tech user, not just a mouse user.
    */
   async openMegaMenu(name: string): Promise<void> {
-    const namePattern = new RegExp(`^${escapeRegex(name)}$`, "i");
-    const link = this.root.getByRole("link", { name: namePattern }).first();
-    if ((await link.count()) > 0) {
-      await link.hover();
-      return;
-    }
-    await this.root.getByRole("button", { name: namePattern }).first().hover();
+    const trigger = this.megaMenuTrigger(name);
+    await trigger.focus();
+    await this.page.keyboard.press("Enter");
   }
 
   /** Submit a search query and let navigation occur. */
