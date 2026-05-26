@@ -151,3 +151,80 @@ Two failing tests from the run on 2026-05-26 — root causes analyzed from `test
 
 - Both failures highlight POM/test-suite contracts that need a stronger "visible-only" default for components with documented dual-slot rendering (favorites, cart, possibly Chat Now). Consider adding a lint or convention in `pages/components/*` to always chain `:visible` for elements documented in `header.md` §1.7 line 510 as duplicate-slot.
 - Failure A confirms the a11y test in its current shape works as a regression detector — DO NOT relax it with `.disableRules()`.
+
+---
+
+## Investigation notes — 2026-05-26 follow-up (workers=3 verification)
+
+Three hard failures from the workers=3 verification run analyzed read-only.
+Live trace artifacts in `test-results/*/error-context.md` were partially overwritten
+by a subsequent in-progress run; the V1 a11y error-context was captured before
+overwrite, the other two are reasoned from test source + POM + helper code +
+the documented workers=3 throttling hypothesis already encoded in
+`playwright.config.ts:13-18` ("3 workers shaved wall time 39% but tripled the
+flake rate by triggering per-IP request budget throttling").
+
+### Finding C — V1 homepage a11y: staging returned 503, not a real WCAG regression
+
+- **Test:** `tests/header/accessibility.spec.ts:23` — _"V1 homepage header + skip link has no WCAG 2.1 AA violations"_
+- **Symptom:** `locator('ci-header-prerender, ci-header').first().first()` waitFor times out after 15s (`TIMEOUTS.HYDRATION`). The captured `error-context.md` page snapshot shows ONLY: `heading "503 Service Temporarily Unavailable" [level=1]`. The header host element never rendered because the response body was a 503 error page from the staging edge.
+- **Hypothesis matched:** **Workers=3 hydration race / per-IP throttling.** This is exactly the mode described in `playwright.config.ts:13-18` — under workers=3 against staging, concurrent goto() bursts trip the per-IP request budget; the edge returns 503 instead of the homepage HTML. axe never runs because the precondition (header attached) is never met. Note the test was PASSING at workers=2 baseline, which corroborates per-IP throttling as the cause (lower concurrency stays under the budget).
+- **Classification:** **(c) flake masquerading as failure** — triggered by infrastructure throttling, not by a product bug. The test code is correct; the test environment was the wrong shape.
+- **Why this is NOT a real product regression:** The 503 came BEFORE any header HTML, so axe never inspected the DOM. No WCAG rule was actually evaluated. There is no signal here about WCAG compliance, only about staging availability under concurrent load.
+- **Why this is NOT a test bug:** The test correctly waits for the header to attach before scanning. The 15s `TIMEOUTS.HYDRATION` budget is appropriate for normal hydration; a 503 is the wrong response shape, not a slow response.
+- **Recommended action:**
+  1. **No FE ticket** — staging 503 is infra-level and load-induced, not a product defect.
+  2. **No test fix** — restoring `workers: 2` (already done in the pending diff on `playwright.config.ts`) resolves the symptom. Confirmed by inspection: current config now sets `workers: process.env.CI ? 4 : 2`.
+  3. **Re-run at workers=2** — under Playwright's default retry budget (`retries: 1` locally, `2` in CI), this class of edge-503 is absorbed without surfacing. If it surfaces again at workers=2 baseline, escalate as a staging stability issue (not as a WCAG regression).
+  4. **Optional hardening (not applied):** add a `goto` response check that fails fast on 5xx with a clear message ("staging returned 503 — likely throttling, retry") so the failure mode is self-explanatory in CI logs. Out of scope for this read-only investigation.
+
+### Finding D — Mobile-small (375×667) responsive: same staging 503 / hydration starvation under workers=3
+
+- **Test:** `tests/header/responsive.spec.ts:23` (test body), described at `:20` for the `mobile-small` breakpoint defined in `data/breakpoints.ts:7-13` (`{ width: 375, height: 667 }`).
+- **Symptom:** Test was passing or borderline-flaky at workers=2; became a consistent fail under workers=3. The live trace artifact was overwritten by a subsequent run before I could capture it, but the failure mode is fully explained by the in-tree evidence.
+- **Hypothesis matched:** **Workers=3 per-IP throttling, same root cause as Finding C.** Evidence:
+  - The file-level comment block at `tests/header/responsive.spec.ts:12-17` (currently committed) names the exact failure mode: _"viewport-switching sweep across many breakpoints hammers a single staging endpoint with back-to-back goto() + hydration waits. Parallel mode across workers triggers per-IP budget throttling and intermittently fails the late-hydration assertions."_ This file is now configured `test.describe.configure({ mode: "serial" })` precisely to mitigate this — but per-file serial only stops `responsive.spec.ts` from racing itself; it does NOT prevent OTHER spec files from racing it on a 3rd worker.
+  - At 375×667 the test asserts the hamburger is visible (`expectedHamburger: true` per `data/breakpoints.ts:11`). Under starved hydration the `#menuButton:visible` count stays at 0 because the breakpoint-driven CSS / WC hydration didn't complete before `TIMEOUTS.LAZY_DOM`.
+  - The test uses `expect(async () => …).toPass()` to absorb single-paint hydration races. That gracefully absorbs the 1-paint race at 1023px (the documented edge case). It does NOT absorb a 503 or a hydration starvation that lasts the whole 15s window.
+  - Crucially, this is the SAME root cause as Finding C: workers=3 + staging per-IP budget = degraded responses on whichever spec rolls in third. The mobile-small test was simply the unlucky one this run.
+- **Classification:** **(c) flake masquerading as failure** — under workers=3 it's deterministic-looking (consistent fail) but goes away at workers=2. That's the textbook throttling signature, not a real responsive regression at 375px.
+- **Why this is NOT a real responsive regression:** No evidence the 375px breakpoint itself changed. The `mobile-small` config (`expectedHamburger: true`) matches doc §1.4.8 and was already passing at workers=2. The build between runs is the staging build — same FE artifact for both configs.
+- **Why this is NOT a test/POM bug:** The test code already uses the right pattern (`#menuButton:visible` with `toPass` retry inside `TIMEOUTS.LAZY_DOM`). The POM doesn't even enter the picture for this assertion — it's a raw `page.locator()`. The only test-side mitigation would be cross-spec serialization, which is too heavy-handed for a workers-count knob fix.
+- **Recommended action:**
+  1. **No FE ticket** — same as Finding C, this is infrastructure throttling, not a product defect.
+  2. **No test fix** — `workers: 2` baseline (already restored in the pending config diff) is the intended resolution.
+  3. **Do NOT increase retries** beyond the current `1 local / 2 CI` budget to mask this. Retries should absorb single transient flakes, not paper over a systematic throttling regime. If workers=3 is required for wall-time reasons in the future, the right fix is per-spec rate-limiting (or a dedicated staging IP), not retry inflation.
+  4. **Optional follow-up (not applied):** if the team revisits workers=3, add a global `route` interceptor counting requests/sec and assert a soft ceiling to surface throttling at suite start rather than mid-run.
+
+### Finding E — Phone affordance: real test bug — wrong DOM scope (footer instead of header utility strip)
+
+- **Test:** `tests/journeys/support.spec.ts:12` — _"phone affordance is dialable in the format the OS dialer accepts"_
+- **Symptom:** Pre-existing failure, NOT introduced by workers=3 (was failing at both workers=2 and workers=3). Trace artifact overwritten; reasoning from source.
+- **Test body:** Calls `await waitForFooterReady(page)` (which scopes to and scrolls in `ci-full-footer, [role='contentinfo']` — see `helpers/page-state.ts:9-13`), then queries `page.locator('a[href^="tel:"]').first()` at the PAGE scope.
+- **Hypothesis matched:** **Wrong-location test bug.** The test comment on `support.spec.ts:16` says _"Phone link lives in lazy-hydrated `ci-full-footer` — wait or race the hydration"_, but per doc §1.3 prvok 8 the canonical phone link lives in the HEADER utility strip (`.banner-container`), NOT in the footer. Corroborating evidence in-tree:
+  - `pages/components/HeaderComponent.ts:34-39` documents the header support phone explicitly: _"Header support phone (`tel:` link). Lives in the 'Need Help? We've Got You' support strip when shown — observed on staging 2026-05-03 (e.g. 844-222-8343). Distinct from the footer phone; CALL edge tests assert both agree on format."_
+  - `pages/components/HeaderComponent.ts:80` exposes a ready-to-use locator: `this.headerPhone = this.root.locator('a[href^="tel:"]').first();` — the header-scoped equivalent the test SHOULD be using.
+  - The test's `page.locator('a[href^="tel:"]').first()` resolves in DOM order across the whole document. After `waitForFooterReady` has scrolled the footer into view, the first-encountered `tel:` link can be either header or footer depending on hydration ordering — non-deterministic, and the header utility strip phone link is the documented authoritative one.
+- **Secondary issue:** even within the footer, `ci-full-footer` lazy-hydrates, and `waitForFooterReady` only waits for `attached` + `scrollIntoView`, not for inner content (the tel link inside the footer) to render. So when the test happens to bind to a footer tel link, it races the lazy descendant hydration. This is the racing condition the task description hypothesized; it compounds the wrong-scope bug.
+- **Classification:** **(b) test/POM bug.** Wrong location + wrong helper (footer-readiness gate for a header element). NOT a flake (deterministic when the page renders both phone link variants in the wrong DOM order, deterministic-fail when the footer phone takes longer than the header phone to appear).
+- **Why this is NOT a real product bug:** The header utility strip phone link IS present on the live site (per the POM doc comment + staging probe 2026-05-03). The test is just not querying it.
+- **Why this is NOT a flake:** The failure is reproducible across workers configurations and across runs — it predates the workers=3 change. Increasing retries would not help because the fundamental query is wrong.
+- **Recommended action (NOT applied — investigation is read-only):**
+  1. **Test fix (proposed only):** Re-scope the query to the header utility strip and use the POM's existing `header.headerPhone`. Concretely, the test fixture already injects `header` (the `HeaderComponent` instance) — add `header` to the destructured fixtures on `support.spec.ts:13`, drop the `waitForFooterReady` call (or replace with `header.root.first().waitFor({ state: "attached" })`), and query `header.headerPhone` instead of the page-scoped `a[href^="tel:"]`. The format regex on `support.spec.ts:24` and the "talk to a real person / customer service / call us / need help" text assertion on `:30` can stay — both apply to the header support strip content.
+  2. **No FE ticket** — the header utility strip phone link already exists in production.
+  3. **No retry change** — retries do not fix a wrong query.
+  4. **Adjacent question for the test author:** is there ALSO a footer phone link that should be covered (the POM comment on `HeaderComponent.ts:39` says "CALL edge tests assert both agree on format")? If yes, a second test should scope to the footer explicitly via `page.locator('ci-full-footer a[href^="tel:"]')` after a stronger footer readiness gate (wait on the descendant, not just on the host).
+
+### Summary table
+
+| Finding | Test                                                | Classification                                                          | Recommended action                                                                                 |
+| ------- | --------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| C       | `tests/header/accessibility.spec.ts:23`             | (c) flake — staging 503 under workers=3                                 | Run at workers=2 baseline (already restored in pending config diff). No FE ticket. No test change. |
+| D       | `tests/header/responsive.spec.ts:23` (mobile-small) | (c) flake — same workers=3 throttling root cause                        | Run at workers=2. No FE ticket. No retry inflation.                                                |
+| E       | `tests/journeys/support.spec.ts:12`                 | (b) test bug — wrong DOM scope (footer instead of header utility strip) | Re-scope to `header.headerPhone` (POM locator already exists). No FE ticket.                       |
+
+### Cross-cutting note
+
+Findings C and D share a single root cause: workers=3 + staging per-IP request budget = 503 / hydration starvation. The empirical comment block already in `playwright.config.ts:13-18` predicted this exactly — the verification run is the data point that confirms the prediction. Hold the line at workers=2 locally; if a future need for higher concurrency arises, invest in either a dedicated staging IP / bypass or per-spec rate-limiting before bumping workers.
+
+Finding E is independent — a pre-existing test correctness gap unrelated to the workers knob. Fix it in a separate change so the diff stays attributable.
