@@ -1,5 +1,4 @@
 import { test, expect } from "../fixtures/pages.fixture";
-import { HeaderComponent } from "../pages/components/HeaderComponent";
 import { FooterComponent } from "../pages/components/FooterComponent";
 import { PAGES_UNDER_TEST } from "../data/pages-under-test";
 
@@ -12,12 +11,12 @@ test.describe("@p1 render — header & footer cross-page consistency", () => {
   for (const pageDef of PAGES_UNDER_TEST) {
     test(`header and footer render on the ${pageDef.name} page`, async ({
       page,
+      header,
     }) => {
       await test.step(`navigate to ${pageDef.path}`, async () => {
         await page.goto(pageDef.path);
       });
 
-      const header = new HeaderComponent(page);
       const footer = new FooterComponent(page);
 
       await test.step("header is visible with logo, search, cart", async () => {

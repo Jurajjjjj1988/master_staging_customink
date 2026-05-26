@@ -1,5 +1,4 @@
 import { test, expect } from "../fixtures/pages.fixture";
-import { HeaderComponent } from "../pages/components/HeaderComponent";
 
 /**
  * Anonymous user header chrome. Logged-in equivalent (LOGOUT, account
@@ -15,10 +14,9 @@ import { HeaderComponent } from "../pages/components/HeaderComponent";
  */
 test.describe("@p1 user-state — logged out", () => {
   test("anonymous user sees the Sign In link in the header", async ({
-    page,
+    page, header,
   }) => {
     await page.goto("/");
-    const header = new HeaderComponent(page);
     await expect(header.signInLink).toBeVisible();
     await expect(header.signInLink).toHaveAttribute(
       "href",

@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/pages.fixture";
-import { CookieBanner } from "../pages/components/CookieBanner";
+import { TIMEOUTS } from "../helpers/timeouts";
 
 /**
  * Tests #12 #13 #14 #15 — cookie consent.
@@ -15,12 +15,19 @@ import { CookieBanner } from "../pages/components/CookieBanner";
 test.use({ dismissCookie: false });
 
 test.describe("@p1 cookie-consent — first visit", () => {
-  test("cookie banner shows on first visit", async ({ page }) => {
+  test("cookie banner shows on first visit", async ({ page, cookieBanner }) => {
     await page.goto("/");
-    const banner = new CookieBanner(page);
-    await expect(banner.root).toBeVisible({ timeout: 10_000 });
-    await expect(banner.acceptButton).toBeVisible();
-    await expect(banner.rejectButton).toBeVisible();
+    // OneTrust injects the banner asynchronously after the OneTrust SDK
+    // bootstraps; on cold loads the SDK can take several seconds before the
+    // banner is even attached. Wait for attached BEFORE visibility so the
+    // visibility assertion has a real DOM node to poll.
+    await cookieBanner.root.waitFor({
+      state: "attached",
+      timeout: TIMEOUTS.HYDRATION,
+    });
+    await expect(cookieBanner.root).toBeVisible({ timeout: 10_000 });
+    await expect(cookieBanner.acceptButton).toBeVisible();
+    await expect(cookieBanner.rejectButton).toBeVisible();
   });
 });
 
@@ -28,15 +35,15 @@ test.describe("@p1 cookie-consent — acceptance persistence", () => {
   test("cookie acceptance persists across reload and sets analytics cookies", async ({
     page,
     context,
+    cookieBanner,
   }) => {
     await page.goto("/");
-    const banner = new CookieBanner(page);
-    await expect(banner.root).toBeVisible({ timeout: 10_000 });
-    await banner.accept();
-    await expect(banner.root).toBeHidden({ timeout: 10_000 });
+    await expect(cookieBanner.root).toBeVisible({ timeout: 10_000 });
+    await cookieBanner.accept();
+    await expect(cookieBanner.root).toBeHidden({ timeout: 10_000 });
 
     await page.reload();
-    await expect(banner.root).toBeHidden({ timeout: 10_000 });
+    await expect(cookieBanner.root).toBeHidden({ timeout: 10_000 });
 
     const cookies = await context.cookies();
     const cookieNames = cookies.map((c) => c.name);
@@ -50,11 +57,11 @@ test.describe("@p1 cookie-consent — acceptance persistence", () => {
 test.describe("@p2 cookie-consent — settings", () => {
   test("custom cookie preferences save via the settings dialog", async ({
     page,
+    cookieBanner,
   }) => {
     await page.goto("/");
-    const banner = new CookieBanner(page);
-    await expect(banner.root).toBeVisible({ timeout: 10_000 });
-    await banner.openSettings();
+    await expect(cookieBanner.root).toBeVisible({ timeout: 10_000 });
+    await cookieBanner.openSettings();
 
     // OneTrust renders the preference center as `#onetrust-pc-sdk`. The site also
     // exposes a separate `role="dialog"` for the banner itself, so we scope to the
@@ -67,6 +74,6 @@ test.describe("@p2 cookie-consent — settings", () => {
     });
     await expect(saveButton.first()).toBeVisible();
     await saveButton.first().click();
-    await expect(banner.root).toBeHidden({ timeout: 10_000 });
+    await expect(cookieBanner.root).toBeHidden({ timeout: 10_000 });
   });
 });

@@ -1,8 +1,8 @@
 import { test, expect } from "../fixtures/pages.fixture";
 import { waitForFooterReady } from "../helpers/page-state";
+import { TIMEOUTS } from "../helpers/timeouts";
 import { FOOTER_LINKS } from "../data/footer-links";
 import { FOLLOW_US_LINKS } from "../data/follow-us-links";
-import { FooterComponent } from "../pages/components/FooterComponent";
 
 /**
  * Footer click-through journeys — extracted from `user-journeys.spec.ts`
@@ -21,15 +21,20 @@ test.describe("@p1 journey — footer link click-through", () => {
   for (const link of FOOTER_LINKS) {
     test(`positive: user clicks footer ${link.section} > ${link.name} and lands on the right destination`, async ({
       page,
+      footer,
     }) => {
       await page.goto("/", { timeout: 60_000 });
       await waitForFooterReady(page);
 
-      const footer = new FooterComponent(page);
       const item = footer
         .section(link.section)
         .getByRole("link", { name: link.name })
         .first();
+      // Footer sections lazy-mount their internal `<ul>` blocks after
+      // `<ci-full-footer>` hydrates; on slow cold loads the link node is
+      // not yet in the DOM when `toBeVisible` first polls. Wait for
+      // attached first so the visibility poll has a real node.
+      await item.waitFor({ state: "attached", timeout: TIMEOUTS.HYDRATION });
       await expect(item).toBeVisible({ timeout: 10_000 });
 
       if (
@@ -87,11 +92,11 @@ test.describe("@p1 journey — Follow Us social links", () => {
   for (const entry of FOLLOW_US_LINKS) {
     test(`positive: user can follow CustomInk on ${entry.name}`, async ({
       page,
+      footer,
     }) => {
       await page.goto("/", { timeout: 60_000 });
       await waitForFooterReady(page);
 
-      const footer = new FooterComponent(page);
       const link = footer.followUsLink(entry.name);
       await expect(link).toBeVisible({ timeout: 10_000 });
 
