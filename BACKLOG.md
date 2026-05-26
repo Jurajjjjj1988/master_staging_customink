@@ -228,3 +228,21 @@ flake rate by triggering per-IP request budget throttling").
 Findings C and D share a single root cause: workers=3 + staging per-IP request budget = 503 / hydration starvation. The empirical comment block already in `playwright.config.ts:13-18` predicted this exactly — the verification run is the data point that confirms the prediction. Hold the line at workers=2 locally; if a future need for higher concurrency arises, invest in either a dedicated staging IP / bypass or per-spec rate-limiting before bumping workers.
 
 Finding E is independent — a pre-existing test correctness gap unrelated to the workers knob. Fix it in a separate change so the diff stays attributable.
+
+---
+
+## 6 — Search `qzx9f7…` no-results query intermittently redirects to `/` (silent-fallback regression)
+
+**Blocks:** 1 intermittent failure (`tests/journeys/search.spec.ts:175` "nonexistent query lands on a results page that says it found nothing"). Currently classified as "flaky" because Playwright retries=1 catches it, but it is NOT a test flake — it is a real intermittent staging bug.
+
+**Symptom:** When the search submits a query that produces zero Algolia hits (e.g. `qzx9f7<timestamp>`), staging SOMETIMES navigates to the results page with the explicit "no results" copy (correct), and SOMETIMES silently navigates to `/` (homepage). The test asserts `toHaveURL(/qzx9f7.*/i)` so the homepage redirect fails the URL assertion. Trace shows `navigated to "https://www-master.staging.customink.com/"` instead of `.../search?q=qzx9f7…`.
+
+**Why it matters:** Doc §1.3 prvok 2 edge cases section explicitly defines this regression class — **"Query bez Algolia hits → naviguje na results page s explicit "no results" copy, NIE silent fallback na `/`"**. Marketing attribution + UX both depend on the explicit no-results page (so users understand their query found nothing and can refine). Silent homepage fallback is the documented bug.
+
+**Owner:** Front-end (search routing) + Algolia config. Likely fix paths:
+- Verify the Algolia client-side handler always navigates to `/search?q=<query>` even on zero-hit; current intermittency suggests a race condition between client-side route and server-side empty-result handling.
+- If a server-side "smart redirect" deliberately sends zero-hit queries to `/`, that policy contradicts doc §1.3 and should be removed (or doc should be updated).
+
+**How to verify the fix:** Run `tests/journeys/search.spec.ts:175` 20× in a row against staging. Expected: 100 % pass rate. Currently observed: ~70-80 % pass rate (flaky retries hide this in the suite but it is reproducible by re-running the test multiple times).
+
+**Test-side workaround (NOT recommended):** Convert the test to `test.fixme(...)` would mask the bug. The retries=1 currently catches it without masking, which is the right tradeoff until FE fixes the routing.
