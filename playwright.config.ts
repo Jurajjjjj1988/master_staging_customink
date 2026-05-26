@@ -10,9 +10,11 @@ export default defineConfig({
   // Staging is intermittent (A/B routing, lazy hydration races, intermittent CMS).
   // 1 local retry catches the common single-flake class without masking real bugs.
   retries: process.env.CI ? 2 : 1,
-  // Local: 2 workers — staging gets unhappy under 4 concurrent sessions.
+  // Local: 3 workers — empirical sweet spot on this 8-core box. 2 was
+  // throughput-limited (~7.9 min wall for chromium-desktop); 4+ trips
+  // staging's per-IP request budget and bumps the flake rate.
   // CI: 4 workers (sharded via --shard, so per-shard concurrency is ≤ 4).
-  workers: process.env.CI ? 4 : 2,
+  workers: process.env.CI ? 4 : 3,
   reporter: [["html", { open: "never" }], ["list"], ["github"]],
   // Default 30s test timeout is shorter than navigationTimeout (60s) — bump
   // to 60s so a slow staging cold-load goto + a few subsequent assertions
@@ -72,9 +74,12 @@ export default defineConfig({
     // first mobile-perceivable journey lands; running desktop tests on a
     // smaller viewport without different selectors would be vanity coverage.
     {
-      // Production smoke: same suite, different baseURL. Run with
-      // `npm run test:prod-smoke` to validate the suite against
-      // production-routed pages (P1 only; gated by tag).
+      // Production smoke: header chrome + journey health-checks against prod.
+      // Excludes staging-specific surfaces (Lab redirect / Optimizely cookie
+      // bucketing / WCAG axe sweep which expects staging build) and the
+      // variant specs that mostly contain documented-gap markers and add
+      // noise on a healthy production baseline. Scope = "is the header
+      // rendering and clickable on prod?".
       name: "prod-smoke",
       use: {
         ...devices["Desktop Chrome"],
@@ -82,6 +87,15 @@ export default defineConfig({
         baseURL: process.env.PROD_URL ?? "https://www.customink.com",
       },
       grep: /@p1/,
+      testIgnore: [
+        /header\/accessibility\.spec\.ts/,
+        /header\/feature-flags\.spec\.ts/,
+        /header\/variant-0-common\.spec\.ts/,
+        /header\/variant-2-cart\.spec\.ts/,
+        /header\/variant-3-lab\.spec\.ts/,
+        /header\/variant-4-accounts\.spec\.ts/,
+        /journeys\/logged-in\.spec\.ts/,
+      ],
     },
   ],
 });

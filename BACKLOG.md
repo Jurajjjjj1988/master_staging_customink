@@ -105,3 +105,49 @@ Each entry lists: **what blocks**, **how many tests are gated**, **owner**, **ho
 | 1   | P1       | 1-2 h   | 1 test + WCAG Level A    |
 | 4   | P2       | 1 h doc | observability            |
 | 5   | P3       | 2 h     | code quality / a11y AA   |
+
+---
+
+## Investigation notes — 2026-05-26 failures
+
+Two failing tests from the run on 2026-05-26 — root causes analyzed from `test-results/*/error-context.md`, screenshots, and POM / doc cross-reference. Read-only investigation; no test files were modified.
+
+### Finding A — V3 Lab a11y: axe `listitem` violation is a genuine product bug
+
+- **Test:** `tests/header/accessibility.spec.ts:63` — _"V3 lab header has no WCAG 2.1 AA violations"_
+- **Symptom:** axe reports 2 nodes failing rule `listitem` (impact: serious, tags `wcag2a`, `wcag131`). Both nodes are MUI list items: `<li class="MuiListItem-root … css-1yuwiqh">` and `<li … data-testid="sign-out">`. Error message: _"List item does not have a `<ul>`, `<ol>` parent element"_.
+- **Hypothesis matched:** **Genuine product regression**, not axe misconfiguration. Evidence:
+  - The `<li data-testid="sign-out">` element comes from the Lab account-menu dropdown — that dropdown is part of the V3 Lab chrome (doc §3, line 812 mentions "Lab account-menu dropdown 9-item parita s globálnym headerom — unverified"). The dropdown is wired into the `<ci-header>` host element, so axe's `.include("ci-header-prerender, ci-header")` correctly scopes them in.
+  - The `MuiListItem` markup style is Material UI — that means the Lab account dropdown is rendered with raw `<li>` siblings without a wrapping `<ul role="menu">`. This is a real WCAG 1.3.1 Info & Relationships (Level A) violation: a screen reader announces orphaned list items with no group context, and assistive tech cannot navigate them as a list.
+  - The screenshot (`test-failed-1.png`) confirms the Lab task-mode chrome rendered correctly (My Designs + Untitled design + identity strip visible), so the page itself is in the right state — only the markup is malformed.
+- **Why this is NOT an axe-allowlist case:** Adding `.disableRules(["listitem"])` would mask the same bug if it surfaces in V1/V2/V4. The rule is WCAG Level A and impact "serious" — it should fail the build, not be silenced.
+- **Recommended action:**
+  1. **Product:** Open FE ticket against the Lab account dropdown component — wrap its `<li>` siblings in `<ul role="menu">` (or `<ol>` if order matters). Add `role="menuitem"` to each `<li>` per WAI-ARIA Authoring Practices.
+  2. **Test:** No code change. Keep the test failing until FE ships the fix — it's catching exactly the regression it was designed to catch.
+  3. **BACKLOG:** Promote this to a new top-level BACKLOG entry (e.g. "Lab account dropdown — WCAG 1.3.1 listitem violation") with owner = FE Lab team, priority P1 (Level-A blocker, same tier as item #1).
+
+### Finding B — Guest favorites journey: hidden duplicate-slot favorites link, NOT hydration race
+
+- **Test:** `tests/journeys/support.spec.ts:81` — _"clicking favorites in the header without anything saved shows the empty state"_
+- **Symptom:** `expect(header.favorites).toBeVisible()` fails after 10s. Locator resolved 14 times to `<a data-testid="favorites-global-header" class="ghf-icon-button ciHeader-favorites-icon-button" href=".../products/favorites">` — same element each retry, all hidden. Screenshot shows a heart icon IS visible in the rendered viewport (in the meganav band).
+- **Hypothesis evaluated:**
+  - **#1 Viewport mismatch:** _PARTIAL match._ The viewport itself was correct (chromium-desktop 1440×900, screenshot proves desktop chrome rendered). But the root cause is related — see #2.
+  - **#2 CSS regression:** _NO._ No evidence of a new `display: none` rule in the trace. The duplicate-slot pattern is documented as long-standing.
+  - **#3 Hydration race:** _UNLIKELY._ A hydration race would produce flickering (some polls visible, some hidden). Here all 14 polls returned the SAME element as hidden — consistent CSS state, not a race.
+  - **The actual root cause (documented but missed in POM):** Doc `docs/components/header.md` line 200 and line 510 explicitly note: _"DOM má duplicate cart/favorites instances (mobile + desktop slot, jeden visible podľa breakpointu) — scope cez `:visible` filter alebo `viewport.width < 1024` switching, NIE cez tag samotný."_ Translation: the header renders TWO favorites `<a>` elements (mobile slot + desktop slot); the breakpoint media query hides one via `display: none`. The POM at `pages/components/HeaderComponent.ts:66-69` does `.getByRole("link", { name: /^favorites$/i }).or(getByLabel(/favorites/i)).first()` — `.first()` resolves by DOM order, not visibility, and happens to land on the hidden slot (mobile slot rendered first in markup, hidden on desktop).
+- **Evidence corroboration:**
+  - The error log's "14 × resolved to … hidden" with identical element attributes across all polls confirms a stable hidden element, not a hydration transient.
+  - The page snapshot in `error-context.md` lines 102-105 lists the meganav-band favorites at ref `e73` as a visible `link "Favorites"` — confirming a SECOND, visible favorites link exists in DOM. The POM's `.first()` resolved to the WRONG one.
+  - The screenshot shows the heart icon visually present in the top-right — confirming desktop chrome rendered fully, hydration completed.
+- **Recommended action:**
+  1. **Test/POM fix (high-priority, P1):** Change `HeaderComponent.ts:66-69` so `favorites` filters for visible only. Two options:
+     - `this.favorites = this.root.getByRole("link", { name: /^favorites$/i }).or(this.root.getByLabel(/favorites/i)).locator("visible=true").first();` — explicit `:visible` filter (Playwright's own visible engine).
+     - Or scope by data-testid + visibility: `this.root.locator('a[data-testid="favorites-global-header"]:visible').first()`.
+  2. **Optional defensive guard:** Add `await header.root.waitFor()` at top of the test — cheap insurance against hydration races on slow staging, even though that wasn't the cause here.
+  3. **Apply same fix to the cart locator** at `HeaderComponent.ts:48` — doc explicitly notes cart has the same dual-slot pattern. Pre-emptive.
+  4. **No FE ticket needed** — the dual-slot pattern is intentional responsive design; only the POM was wrong.
+
+### Cross-cutting observations
+
+- Both failures highlight POM/test-suite contracts that need a stronger "visible-only" default for components with documented dual-slot rendering (favorites, cart, possibly Chat Now). Consider adding a lint or convention in `pages/components/*` to always chain `:visible` for elements documented in `header.md` §1.7 line 510 as duplicate-slot.
+- Failure A confirms the a11y test in its current shape works as a regression detector — DO NOT relax it with `.disableRules()`.
