@@ -104,10 +104,18 @@ test.describe("@p2 V4.7 Edge cases — testid recycling (no auth required)", () 
     page,
   }) => {
     await page.goto("/", { timeout: TIMEOUTS.NAVIGATION });
-    // Mobile + desktop slots may both carry the testid (doc §1.7 bod 6).
-    await page
-      .getByTestId("my-account")
-      .first()
-      .waitFor({ state: "attached", timeout: TIMEOUTS.HYDRATION });
+    // Doc §1.7 #11 + §4.7 #1: testid recycling — same data-testid serves Sign
+    // In (guest) and My Account (logged-in). Asserting both presence AND the
+    // guest-baseline href catches a regression where the testid drifts to a
+    // different element without the corresponding auth-state change.
+    const myAccount = page.getByTestId("my-account").first();
+    await myAccount.waitFor({
+      state: "attached",
+      timeout: TIMEOUTS.HYDRATION,
+    });
+    await expect(myAccount).toHaveAttribute(
+      "href",
+      /\/profiles\/users\/sign_in/,
+    );
   });
 });

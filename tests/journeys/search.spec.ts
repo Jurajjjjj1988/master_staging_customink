@@ -41,55 +41,51 @@ test.describe("@p1 journey — find / search submit", () => {
     }).toPass({ timeout: TIMEOUTS.LAZY_DOM });
   });
 
-  test("empty submit does not navigate away", async ({ page, header }) => {
-    await page.goto("/");
-    const startUrl = page.url();
-
-    await header.search.fill("");
-    await header.search.press("Enter");
-    await page.waitForLoadState("domcontentloaded");
-    expect(page.url(), "empty query should not trigger navigation").toBe(
-      startUrl,
-    );
-  });
-
   /*
    * §1.3 search edge cases — input-validation, DoS resilience, keyboard
    * dismiss, XSS escaping. Each test pins a single regression class so a
    * future change that breaks input handling on the search box surfaces
    * immediately rather than failing the user in production.
+   *
+   * Regression class: trim() missing on client → blank URL params or 0-hit
+   * results page rendered as if the user typed actual content. Edge cases
+   * cover empty, ascii-space-only, and mixed-whitespace (tab + newline).
+   * Acceptable outcomes per input: stay on origin (preferred) OR navigate
+   * to an explicit no-results surface — silent homepage render is the bug.
    */
-
-  test("whitespace-only query does not submit / shows no results state", async ({
+  test("empty / whitespace-only query is suppressed or lands on no-results", async ({
     page,
     header,
   }) => {
-    // Regression class: trim() missing on client → blank URL params or 0-hit
-    // results page rendered as if the user typed actual content. Acceptable
-    // outcomes: stay on origin (preferred) OR navigate to a no-results
-    // surface that says nothing was found.
+    const queries = ["", "    ", "\t\n"];
     await page.goto("/");
     const startUrl = page.url();
 
-    await header.search.fill("    ");
-    await header.search.press("Enter");
-    await page.waitForLoadState("domcontentloaded");
+    for (const query of queries) {
+      await test.step(`query: ${JSON.stringify(query)}`, async () => {
+        await header.search.fill(query);
+        await header.search.press("Enter");
+        await page.waitForLoadState("domcontentloaded");
 
-    const stayedOnOrigin = page.url() === startUrl;
-    if (stayedOnOrigin) {
-      // Preferred: client-side guard suppressed the submit entirely.
-      expect(page.url()).toBe(startUrl);
-    } else {
-      // Fallback: query went through but should land on a no-results state,
-      // not a silent homepage render.
-      const message = page.getByText(
-        /no results|nothing found|0 results|did not match|couldn['’]t find/i,
-      );
-      const hasMessage = (await message.count()) > 0;
-      expect(
-        hasMessage,
-        "whitespace query must either be suppressed OR resolve to an explicit no-results state",
-      ).toBe(true);
+        const stayedOnOrigin = page.url() === startUrl;
+        if (stayedOnOrigin) {
+          // Preferred: client-side guard suppressed the submit entirely.
+          expect(page.url()).toBe(startUrl);
+        } else {
+          // Fallback: query went through but must land on a no-results state,
+          // not a silent homepage render.
+          const message = page.getByText(
+            /no results|nothing found|0 results|did not match|couldn['’]t find/i,
+          );
+          const hasMessage = (await message.count()) > 0;
+          expect(
+            hasMessage,
+            "blank query must either be suppressed OR resolve to an explicit no-results state",
+          ).toBe(true);
+          // Reset to origin so the next iteration starts from the same state.
+          await page.goto("/");
+        }
+      });
     }
   });
 
