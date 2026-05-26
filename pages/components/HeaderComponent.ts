@@ -77,7 +77,16 @@ export class HeaderComponent {
       .getByRole("link", { name: /^favorites$/i })
       .or(this.root.getByLabel(/favorites/i))
       .filter({ visible: true });
-    this.headerPhone = this.root.locator('a[href^="tel:"]').first();
+    // Phone has a triple-slot DOM (doc §1.7 #10 + live probe 2026-05-26):
+    // mobile `.banner-ttarpMobile` button (hidden on desktop) +
+    // `.ciHeader-phoneNumberLink` (visible utility strip) +
+    // `.ghf-customerContact-storeText.ciHeader-phoneNumberLink` (visible
+    // identity strip on some auth states). All point at the same tel: href.
+    // Filter to visible, then collapse with .first() to one canonical node.
+    this.headerPhone = this.root
+      .locator('a[href^="tel:"]')
+      .filter({ visible: true })
+      .first();
   }
 
   /** Locate any header nav link by its accessible name. */

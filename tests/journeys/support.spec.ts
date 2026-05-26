@@ -21,9 +21,12 @@ test.describe("@p1 journey — call support", () => {
       timeout: TIMEOUTS.HYDRATION,
     });
     // Number rotates within toll-free pool — assert format, not digits.
+    // Country code is optional (US toll-free shown as 855-256-1652 today,
+    // could be +1-855-... tomorrow). Wrap country in a non-capturing
+    // optional group so both shapes pass.
     await expect(header.headerPhone).toHaveAttribute(
       "href",
-      /^tel:\+?\d{1,3}-?\d{3}-?\d{3}-?\d{4}$/,
+      /^tel:(?:\+?\d{1,3}-?)?\d{3}-?\d{3}-?\d{4}$/,
     );
     await expect(header.headerPhone).toBeEnabled();
   });
