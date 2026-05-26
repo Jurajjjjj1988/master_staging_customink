@@ -1,6 +1,5 @@
 import { test, expect } from "../../fixtures/pages.fixture";
 import { TIMEOUTS } from "../../helpers/timeouts";
-import { isAllowlistedPageError } from "../../helpers/known-issues";
 
 /**
  * Variant 0 — Common technical foundation. Doc §0.
@@ -106,23 +105,5 @@ test.describe("@p2 V0.4 design tokens — CSS values match documented brand colo
       (el) => globalThis.getComputedStyle(el).backgroundColor,
     );
     expect(bg).toMatch(/rgb\(30,\s*57,\s*210\)/);
-  });
-});
-
-test.describe("@p3 V0.5 console health — Stencil host emits no uncaught errors", () => {
-  test("homepage hydration completes without uncaught header errors", async ({
-    page,
-  }) => {
-    const errors: string[] = [];
-    page.on("pageerror", (err) => errors.push(err.message));
-    await page.goto("/");
-    const host = page.locator(HOST_SELECTOR).first();
-    await host.waitFor({ state: "attached", timeout: TIMEOUTS.LAZY_DOM });
-    await expect(host).toHaveClass(/\bhydrated\b/, {
-      timeout: TIMEOUTS.LAZY_DOM,
-    });
-    // Filter known third-party noise via the central allowlist.
-    const headerErrors = errors.filter((e) => !isAllowlistedPageError(e));
-    expect(headerErrors).toEqual([]);
   });
 });

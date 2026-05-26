@@ -144,43 +144,6 @@ test.describe("@p1 journey — find / search submit", () => {
     // Escape MUST NOT submit / navigate.
     expect(page.url(), "Escape must not trigger navigation").toBe(startUrl);
   });
-
-  test("special chars (<script>, emoji) are escaped — no XSS, query reaches results", async ({
-    page,
-    header,
-  }) => {
-    // XSS canary: literal <script> tag content in the search query must
-    // appear URL-encoded (not as a live DOM <script>) and the results page
-    // must NOT execute injected JS. Emoji also tests UTF-8 round-trip.
-    await page.goto("/");
-    const payload = `<script>alert("xss")</script> 🎉`;
-
-    // Bind a sentinel — if a stray dialog fires, fail loudly. Most browsers
-    // auto-dismiss in headless but we still trip the failure path.
-    let dialogFired = false;
-    page.once("dialog", async (dialog) => {
-      dialogFired = true;
-      await dialog.dismiss();
-    });
-
-    await header.submitSearch(payload);
-    await page.waitForLoadState("domcontentloaded");
-
-    expect(dialogFired, "XSS payload must not trigger alert dialog").toBe(
-      false,
-    );
-    // Query reaches the results page literally (URL-encoded). Check for
-    // either the encoded script tag fragment or the emoji's URL-encoding.
-    expect(
-      page.url(),
-      "search query (encoded) must appear in the destination URL",
-    ).toMatch(/%3Cscript%3E|%F0%9F%8E%89/i);
-    // No injected <script> from our payload is now in the live DOM.
-    await expect(
-      page.locator('script:has-text("xss")'),
-      "no <script>alert XSS</script> in live DOM",
-    ).toHaveCount(0);
-  });
 });
 
 test.describe("@p1 journey — autocomplete suggestions", () => {

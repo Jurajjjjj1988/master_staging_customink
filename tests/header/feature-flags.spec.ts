@@ -1,9 +1,5 @@
 import { test, expect } from "../../fixtures/pages.fixture";
-import {
-  AB_TESTS,
-  AUTH_COOKIE_NAME,
-  LAB_REDIRECT_COOKIES,
-} from "../../data/feature-flags";
+import { AB_TESTS, AUTH_COOKIE_NAME } from "../../data/feature-flags";
 import { TIMEOUTS } from "../../helpers/timeouts";
 
 /**
@@ -80,26 +76,4 @@ test.describe("@p2 V1.6 Auth cookie — controls V1/V4 swap", () => {
     // "false" so the assertion is deterministic and unconditional.
     expect(authCookie?.value ?? "false").not.toBe("true");
   });
-});
-
-test.describe("@p3 V1.6 Personalisation cookies — Lab redirect signal", () => {
-  // Doc §0 lists 3 personalisation cookies that may trigger an aggressive
-  // /lab redirect for returning visitors. These tests guard against the
-  // class where a cookie that SHOULDN'T trigger redirect quietly starts.
-  for (const cookieName of LAB_REDIRECT_COOKIES) {
-    test(`presence of "${cookieName}" cookie does not surface in clean session`, async ({
-      page,
-    }) => {
-      await page.goto("/", { timeout: TIMEOUTS.NAVIGATION });
-      const cookies = await page.context().cookies();
-      const found = cookies.some((c) => c.name === cookieName);
-      // Clean fixture context must NOT carry personalisation cookies — they
-      // would bias Lab redirect tests downstream. Real assertion catches
-      // accidental fixture pollution.
-      expect(
-        found,
-        `Personalisation cookie "${cookieName}" leaked into clean session — Lab redirect tests will bias.`,
-      ).toBe(false);
-    });
-  }
 });

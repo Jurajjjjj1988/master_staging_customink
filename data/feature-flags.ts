@@ -14,10 +14,4 @@ export const AB_TESTS = [
   },
 ] as const;
 
-export const LAB_REDIRECT_COOKIES = [
-  "page_tests",
-  "session_token",
-  "interactions",
-] as const;
-
 export type AbTest = (typeof AB_TESTS)[number];

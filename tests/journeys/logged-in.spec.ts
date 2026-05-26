@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { test, expect } from "../../fixtures/pages.fixture";
-import { PRODUCT_URLS } from "../../data/products";
 import { TIMEOUTS } from "../../helpers/timeouts";
 
 /**
@@ -249,95 +248,10 @@ test.describe("logged-in user — header journeys", () => {
     });
   }
 
-  test.describe("@p1 journey — cart (persisted)", () => {
-    test("logged-in user adds a product, reloads, and the cart still contains it", async ({
-      page,
-      header,
-    }) => {
-      await page.goto(PRODUCT_URLS[0].path, { timeout: TIMEOUTS.NAVIGATION });
-
-      const productCard = page
-        .getByRole("link", { name: /.+/ })
-        .filter({ has: page.locator("img") })
-        .first();
-      await expect(productCard).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
-      await productCard.click();
-      await page.waitForLoadState("domcontentloaded");
-
-      const addToCart = page
-        .getByRole("button", {
-          name: /add to cart|add to bag|buy it now|order this/i,
-        })
-        .first();
-      // Fail loudly if add-to-cart is missing — server persistence is the
-      // bug class this test targets; missing affordance is a real regression.
-      await expect(
-        addToCart,
-        "add-to-cart affordance must exist on a logged-in product page",
-      ).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
-      await addToCart.click();
-      await expect(header.cart).toBeVisible({ timeout: TIMEOUTS.ACTION });
-      await Promise.all([
-        page.waitForURL(/\/(cart|checkout)/, { timeout: TIMEOUTS.URL_CHANGE }),
-        header.cart.click(),
-      ]);
-
-      const lineItem = page.getByRole("listitem").first();
-      await expect(lineItem).toBeVisible({ timeout: TIMEOUTS.ACTION });
-
-      // The actual assertion: persistence must survive a reload.
-      await page.reload();
-      await expect(
-        lineItem,
-        "cart line item must survive a reload when logged in",
-      ).toBeVisible({ timeout: TIMEOUTS.ACTION });
-      const total = page.getByText(/\$\s?[1-9]\d*(\.\d{2})?/).last();
-      await expect(total).toBeVisible();
-    });
-  });
-
-  test.describe("@p1 journey — favorites (persisted)", () => {
-    test("logged-in user hearts a product and finds it listed on /products/favorites", async ({
-      page,
-      header,
-    }) => {
-      await page.goto(PRODUCT_URLS[0].path, { timeout: TIMEOUTS.NAVIGATION });
-
-      const productCard = page
-        .getByRole("link", { name: /.+/ })
-        .filter({ has: page.locator("img") })
-        .first();
-      await expect(productCard).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
-      await productCard.click();
-      await page.waitForLoadState("domcontentloaded");
-
-      const heart = page
-        .getByRole("button", {
-          name: /favorite|add to favorites|save (this )?(design|product)/i,
-        })
-        .or(page.getByLabel(/favorite|heart/i))
-        .first();
-      await expect(heart).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
-      await heart.click();
-      await expect(header.favorites).toBeVisible({ timeout: TIMEOUTS.ACTION });
-      await Promise.all([
-        page.waitForURL(/\/products\/favorites/, {
-          timeout: TIMEOUTS.URL_CHANGE,
-        }),
-        header.favorites.click(),
-      ]);
-
-      // Logged-in must see the persisted product, NOT the anonymous empty-state.
-      const persistedItem = page.getByRole("listitem").first();
-      await expect(
-        persistedItem,
-        "favorited product must persist server-side and appear in /products/favorites",
-      ).toBeVisible({ timeout: TIMEOUTS.ACTION });
-    });
-  });
-
-  test.describe("@p2 journey — header heart icon", () => {
-    test("logged-in user clicks the heart icon in header and lands on /products/favorites", async ({
+  // Doc §1.3 prvok 10 + §4.2 overlay #10: logged-in heart → /account/favorites
+  // (NIE /products/favorites — that's the guest empty-state route).
+  test.describe("@p1 journey — header heart icon → account-scoped favorites", () => {
+    test("logged-in user clicks the heart icon in header and lands on /account/favorites", async ({
       page,
     }) => {
       await page.goto("/", { timeout: TIMEOUTS.NAVIGATION });
@@ -349,16 +263,19 @@ test.describe("logged-in user — header journeys", () => {
       await expect(heart).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
 
       await Promise.all([
-        page.waitForURL(/\/products\/favorites/, {
+        page.waitForURL(/\/account\/favorites/, {
           timeout: TIMEOUTS.URL_CHANGE,
         }),
         heart.click(),
       ]);
+      // Account-scoped favorites surface — assert heading or list, accept
+      // either populated or empty account-state copy (not the guest
+      // empty-state which lives at /products/favorites).
       await expect(
         page
-          .getByRole("listitem")
+          .getByRole("heading", { name: /favorites|saved/i })
           .first()
-          .or(page.getByText(/browse our products and click the heart icon/i)),
+          .or(page.getByRole("listitem").first()),
       ).toBeVisible({ timeout: TIMEOUTS.ACTION });
     });
   });

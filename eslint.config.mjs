@@ -39,8 +39,6 @@ export default [
     //     route doesn't resolve, with a concrete reason string.
     files: [
       "tests/auth.setup.ts",
-      "tests/footer-links.spec.ts",
-      "tests/journeys/auth.spec.ts",
       "tests/journeys/cart.spec.ts",
       "tests/journeys/navigation.spec.ts",
       "tests/journeys/logged-in.spec.ts",

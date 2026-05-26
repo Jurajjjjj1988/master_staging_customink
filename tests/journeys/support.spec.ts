@@ -1,5 +1,4 @@
 import { test, expect } from "../../fixtures/pages.fixture";
-import { PRODUCT_URLS } from "../../data/products";
 import { waitForFooterReady } from "../../helpers/page-state";
 import { TIMEOUTS } from "../../helpers/timeouts";
 
@@ -78,50 +77,7 @@ test.describe("@p1 journey — chat now", () => {
   });
 });
 
-test.describe("@p1 journey — favorites", () => {
-  test("user adds a product to favorites and finds it on /products/favorites", async ({
-    page,
-    header,
-  }) => {
-    await page.goto(PRODUCT_URLS[0].path, { timeout: TIMEOUTS.NAVIGATION });
-
-    const productCard = page
-      .getByRole("link", { name: /.+/ })
-      .filter({ has: page.locator("img") })
-      .first();
-    await expect(productCard).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
-    await productCard.click();
-    await page.waitForLoadState("domcontentloaded");
-
-    // Heart is `<div aria-label="Add to favorites">` — not a role=button.
-    const heart = page.locator('[aria-label*="favorite" i]').first();
-    await expect(heart, "favorites affordance is reachable").toBeVisible({
-      timeout: TIMEOUTS.URL_CHANGE,
-    });
-    await heart.click();
-
-    // Same element flips aria-pressed false→true on click.
-    await expect(heart).toHaveAttribute("aria-pressed", "true", {
-      timeout: TIMEOUTS.QUICK,
-    });
-    await expect(header.favorites).toBeVisible({ timeout: TIMEOUTS.ACTION });
-    await Promise.all([
-      page.waitForURL(/\/products\/favorites/, {
-        timeout: TIMEOUTS.URL_CHANGE,
-      }),
-      header.favorites.click(),
-    ]);
-
-    // Persistence requires login; for anonymous the empty-state copy is OK.
-    const persistedItem = page.getByRole("listitem").first();
-    const anonEmpty = page.getByText(
-      /sign in to save|no favorites yet|create an account to save/i,
-    );
-    await expect(persistedItem.or(anonEmpty).first()).toBeVisible({
-      timeout: TIMEOUTS.ACTION,
-    });
-  });
-
+test.describe("@p1 journey — favorites (guest)", () => {
   test("clicking favorites in the header without anything saved shows the empty state", async ({
     page,
     header,

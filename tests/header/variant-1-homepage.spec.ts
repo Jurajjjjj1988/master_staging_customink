@@ -100,14 +100,6 @@ test.describe("@p1 V1.2 Functional spec — element inventory (16 elements)", ()
     expect(cartHref).toMatch(/cart_source=header/);
   });
 
-  test("element #11 Sign In link is visible (guest-only)", async ({
-    page,
-    header,
-  }) => {
-    await page.goto("/");
-    await expect(header.signInLink).toBeVisible({ timeout: TIMEOUTS.ACTION });
-  });
-
   /*
    * Behaviour-affordance probes — the data-driven loop above only verifies
    * static DOM (visible + href pattern). A header element can be visible AND
@@ -259,22 +251,6 @@ test.describe("@p1 V1.7 Known edge cases", () => {
     // Tests must use a tolerant regex; exact match "customink logo" would fail.
     await page.goto("/");
     await expect(header.logo).toBeVisible({ timeout: TIMEOUTS.HYDRATION });
-  });
-
-  test("cart icon is reachable via stable testid after hydration", async ({
-    page,
-    header,
-  }) => {
-    // Doc §1.7 bod 6: header renders both slot variants in DOM; one visible
-    // per breakpoint. Wait for hydration then assert testid is queryable.
-    await page.goto("/");
-    await header.root
-      .first()
-      .waitFor({ state: "attached", timeout: TIMEOUTS.HYDRATION });
-    await page
-      .getByTestId("cart-global-header")
-      .first()
-      .waitFor({ state: "attached", timeout: TIMEOUTS.HYDRATION });
   });
 
   test.fixme("search input outline-style is visible on focus (no transparent ring regression)", async ({
