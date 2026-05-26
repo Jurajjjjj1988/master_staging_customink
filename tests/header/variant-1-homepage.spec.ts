@@ -213,6 +213,17 @@ test.describe("@p1 V1.4 Flyouty F1-F5 — panel structure", () => {
       const panel = header.root.locator(`#${controls}`).first();
       const items = panel.locator("a[href]");
       await expect(items).toHaveCount(flyout.expectedItemCount);
+
+      // Content-drift anchors — count alone passes when "Short Sleeve" is
+      // swapped for an unrelated SKU. Boundary items pin the documented
+      // first/last link so silent re-orderings fail the suite.
+      if (!flyout.firstItemHref || !flyout.lastItemHref) {
+        throw new Error(
+          `Flyout ${flyout.id} missing firstItemHref/lastItemHref in data/flyouts-v1.ts`,
+        );
+      }
+      await expect(items.first()).toHaveAttribute("href", flyout.firstItemHref);
+      await expect(items.last()).toHaveAttribute("href", flyout.lastItemHref);
     });
   }
 });
