@@ -1,6 +1,8 @@
 # Tests
 
-Playwright + TypeScript E2E suite for the global `header` + `footer` of `customink.com`. The header has 4 variants (Homepage anonymous / Cart-Checkout / Design Lab / Accounts logged-in) — see `docs/components/header.md` for the full functional & behavioural specification.
+Playwright + TypeScript E2E suite for the global `header` of `customink.com`. The header has 4 variants (Homepage anonymous / Cart-Checkout / Design Lab / Accounts logged-in) — see `docs/components/header.md` for the full functional & behavioural specification.
+
+**Scope rule:** every test in this suite must trace to a `docs/components/header.md` § statement. Off-doc smoke tests (footer integrity, marketing CMS, cookie-banner UI) have been intentionally removed — keep the suite signal:noise high.
 
 ## Folder structure
 
@@ -13,23 +15,17 @@ tests/
 │   ├── variant-3-lab.spec.ts         # §3  Design Lab task-mode chrome
 │   ├── variant-4-accounts.spec.ts    # §4  Logged-in overlay (My Account, D2)
 │   ├── responsive.spec.ts            # §X.5 Breakpoint sweep across all variants
-│   └── feature-flags.spec.ts         # §X.6 Cookie / Optimizely A-B matrix
+│   ├── feature-flags.spec.ts         # §X.6 Cookie / Optimizely A-B matrix
+│   └── accessibility.spec.ts         # WCAG 2.1 AA sweep via axe-playwright + documented regressions
 │
 ├── journeys/                     # Behaviour layer — user flows through the header
-│   ├── search.spec.ts                # Find, autocomplete, no-results
-│   ├── support.spec.ts               # Phone, chat, favorites, promo CTA
-│   ├── cart.spec.ts                  # Cart icon, add-to-cart, empty state, qty
-│   ├── navigation.spec.ts            # Skip link, mega-menu hover→click, logo→home
-│   ├── auth.spec.ts                  # Anonymous sign-up + sign-in forms
-│   └── logged-in.spec.ts             # Auth-gated: dropdown items, sign-out, persistence
+│   ├── search.spec.ts                # Find, autocomplete, no-results, edge cases (§1.3 #2)
+│   ├── support.spec.ts               # Phone, chat, promo CTA, guest favorites (§1.2 #8/9/10/14)
+│   ├── cart.spec.ts                  # Cart icon href + empty state landing (§1.2 #13 + §2.7)
+│   ├── navigation.spec.ts            # Skip link, mega-menu hover→click, logo→home (§1.2 #1/3-7/15)
+│   └── logged-in.spec.ts             # Auth-gated: D2 dropdown items, sign-out, heart → /account (§4)
 │
-├── render.spec.ts                # Header + footer render across page set (smoke)
-├── search.spec.ts                # Search-component smoke (parallel to journeys/search)
-├── user-state.spec.ts            # Anonymous Sign In visibility (sanity)
-├── cookie-consent.spec.ts        # Cookie banner — orthogonal to header
-├── footer-links.spec.ts          # Footer link integrity (Footer + Follow Us)
-├── marketing-elements.spec.ts    # YouTube embed, email block — orthogonal
-└── auth.setup.ts                 # Auth fixture: validates storage/auth.json
+└── auth.setup.ts                 # Auth fixture: validates storage/auth.json before logged-in tests
 ```
 
 Supporting code (sibling folders):

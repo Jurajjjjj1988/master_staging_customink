@@ -8,10 +8,10 @@ Generated 2026-05-26 against `docs/components/header.md` (4 variants × 7 sectio
 | -------- | --------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------- | ------------------------------------------------------------------- |
 | **§0**   | Spoločné technické základy (landmark, host, design tokens, skip link) | `tests/header/variant-0-common.spec.ts`                | 7                         | ✅ 4 pass / 3 fixme (live A11y gap, prerender routing, WCAG 2.4.1)  |
 | **§0**   | Accessibility sweep (axe-playwright, WCAG 2.1 AA)                     | `tests/header/accessibility.spec.ts`                   | 5                         | ✅ 3 axe scans / 2 fixme (WCAG 2.4.1 Bypass, 2.5.5 Target Size)     |
-| **§1.1** | V1 Identifikácia (anonymous homepage)                                 | covered via §1.2 + render.spec.ts                      | —                         | ✅                                                                  |
+| **§1.1** | V1 Identifikácia (anonymous homepage)                                 | covered via §1.2                                       | —                         | ✅                                                                  |
 | **§1.2** | V1 Funkčná špec (16 prvkov + selectors)                               | `tests/header/variant-1-homepage.spec.ts`              | 13 inventory + 4 mutation | ✅ data-driven + click+outcome on logo/cart/sign-in/skip-link       |
-| **§1.3** | V1 Behaviorálna špec (per-element behaviour)                          | `tests/journeys/*` (search/cart/auth/nav/support)      | 23                        | ✅ behaviour layer                                                  |
-| **§1.3** | Search edge cases (whitespace, oversized, Escape, special chars)      | `tests/journeys/search.spec.ts`                        | 4 added                   | ✅ parametrized edges                                               |
+| **§1.3** | V1 Behaviorálna špec (per-element behaviour)                          | `tests/journeys/*` (search/cart/nav/support)           | 13                        | ✅ behaviour layer (phone/chat/promo + skip/mega-menu/logo + cart)  |
+| **§1.3** | Search edge cases (whitespace, oversized, Escape, ArrowDown+Enter)    | `tests/journeys/search.spec.ts`                        | 7                         | ✅ parametrized edges                                               |
 | **§1.4** | V1 Flyouts F1-F5 + D1                                                 | `tests/header/variant-1-homepage.spec.ts` (V1.4 block) | 6                         | ⚠ all fixme — inert build (doc §1.7 #2)                             |
 | **§1.5** | V1 Responzívne (breakpoints + sticky)                                 | `tests/header/responsive.spec.ts`                      | 11                        | ✅ 5 viewports × hamburger + sticky                                 |
 | **§1.6** | V1 Stavy a podmienky (cookies, A/B)                                   | `tests/header/feature-flags.spec.ts`                   | 5                         | ✅ Optimizely dataLayer + auth cookie matrix                        |
@@ -24,20 +24,20 @@ Generated 2026-05-26 against `docs/components/header.md` (4 variants × 7 sectio
 
 ## Coverage by layer
 
-- **Reference layer** (header/variant-\*): 7 spec files mapping 1:1 to doc sections
+- **Reference layer** (header/variant-\*): 7 spec files mapping 1:1 to doc sections (V0-V4 + responsive + feature-flags)
 - **A11y layer** (header/accessibility.spec.ts): axe-playwright sweep across V1/V2/V3
-- **Behaviour layer** (journeys/\*): 6 themed spec files (search/cart/auth/nav/support/logged-in)
-- **Smoke layer** (render.spec.ts + cookie-consent + footer-links + marketing + user-state): 5 spec files
+- **Behaviour layer** (journeys/\*): 5 themed spec files (search/cart/nav/support/logged-in)
 - **POM**: 7 components — `HeaderComponent` + `HeaderV2Cart` + `HeaderV3Lab` + `HeaderV4Accounts` + `MegaMenu` + `FooterComponent` + `CookieBanner` (all fixture-injected, no inline `new`)
-- **Data files**: 10 (header-elements-v1, flyouts-v1, breakpoints, feature-flags, products, search-terms + 4 existing)
+- **Data files**: 6 (header-elements-v1, flyouts-v1, breakpoints, feature-flags, products, search-terms)
 - **Helpers**: 5 (timeouts, known-issues, page-state, http-check, external-link-cache)
 
-## Suite metrics (post-2026-05-26 refactor + multi-agent fix wave)
+## Suite metrics (post-2026-05-26 scope cleanup)
 
-- **21 spec files**, ~2200 LOC across all tests
-- **296 tests total** across chromium-desktop / chromium-desktop-authed / prod-smoke
+- **13 spec files + 1 setup**, ~1700 LOC across all tests
+- **182 tests total** across chromium-desktop / chromium-desktop-authed / prod-smoke
 - **TypeScript**: `tsc --noEmit` exit 0
-- **ESLint**: `eslint . --max-warnings=0` exit 0 (was 38 problems pre-fix)
+- **ESLint**: `eslint . --max-warnings=0` exit 0
+- **100 % of tests trace to `docs/components/header.md` §** statement (off-doc tests removed 2026-05-26: auth form behaviour, PDP add-to-cart, PDP heart-toggle, XSS canary, console-health smoke)
 - **0 inline `new PageObject(page)`** in tests (POMs via fixtures only)
 - **0 `expect()` in POM bodies**
 - **0 hard waits** (`waitForTimeout`) in production specs
