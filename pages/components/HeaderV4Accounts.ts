@@ -27,9 +27,13 @@ export class HeaderV4Accounts extends HeaderComponent {
     this.accountDropdown = page.locator('[role="menu"]').filter({
       hasText: /my designs|my account|sign out/i,
     });
+    // Doc §1.7 #10 dual-slot DOM (mobile + desktop instances, breakpoint-
+    // toggled via CSS). `.first()` resolves to the hidden mobile slot on
+    // desktop viewports — use `.filter({ visible: true })` to collapse to
+    // the breakpoint-visible one.
     this.favoritesAccountScoped = this.root
       .getByRole("link", { name: /^Favorites$/i })
-      .first();
+      .filter({ visible: true });
   }
 
   async openAccountDropdown(): Promise<void> {

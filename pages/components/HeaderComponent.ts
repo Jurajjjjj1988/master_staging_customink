@@ -45,7 +45,14 @@ export class HeaderComponent {
     // we want the inner input element so `fill()` works.
     this.search = this.root.getByRole("searchbox", { name: /search/i });
     // Cart label may include a count badge ("Cart (3)") when items exist.
-    this.cart = this.root.getByRole("link", { name: /^cart\b/i });
+    // Doc §1.7 #10: the DOM emits TWO cart instances (mobile slot + desktop
+    // slot, toggled via CSS `display: none` at the breakpoint). A plain role
+    // match — or `.first()` — resolves to the hidden mobile slot on desktop
+    // viewports, causing visibility-gated assertions and `.click()` to fail.
+    // `.filter({ visible: true })` collapses to the breakpoint-visible slot.
+    this.cart = this.root
+      .getByRole("link", { name: /^cart\b/i })
+      .filter({ visible: true });
     this.signInLink = this.root.getByRole("link", { name: /^sign in$/i });
     // "My Account" may render outside ci-header* (page-level) or as a link
     // not a button — try button-in-root, button-page-wide, link-page-wide.
@@ -60,13 +67,16 @@ export class HeaderComponent {
       )
       .or(page.getByRole("link", { name: /^my account$/i }));
     // The favorites <a> has BOTH accessible name "Favorites" AND
-    // aria-label="Favorites" — `getByRole(...).or(getByLabel(...))` would
-    // resolve to 2 of the same element and trip strict-mode. `.first()`
-    // collapses to the canonical one.
+    // aria-label="Favorites", AND doc §1.7 #10 documents the dual-slot DOM
+    // pattern (mobile + desktop instances, breakpoint-toggled via CSS).
+    // `.first()` lands on the hidden mobile slot on desktop viewports, so
+    // visibility-gated assertions (e.g. guest empty-state) fail.
+    // `.filter({ visible: true })` collapses both the role/label duplicate
+    // AND the dual-slot duplicate to one node per viewport.
     this.favorites = this.root
       .getByRole("link", { name: /^favorites$/i })
       .or(this.root.getByLabel(/favorites/i))
-      .first();
+      .filter({ visible: true });
     this.headerPhone = this.root.locator('a[href^="tel:"]').first();
   }
 
