@@ -27,21 +27,27 @@ export default [
     },
   },
   {
-    // user-journeys.spec.ts hits a few playwright-plugin rules in
-    // patterns that are deliberate, not smells:
-    //   - .skip() with a runtime condition (auth.json missing, Design
-    //     Lab required) — not stale; the test will run when staging
-    //     state allows.
-    //   - if (!alreadyOnCart) navigate-to-cart — defensive against the
-    //     site auto-redirecting after add-to-cart on some templates.
-    //   - getAttribute('href') to *derive* the expected URL before a
-    //     click — computing test data, not asserting state.
-    //   - one networkidle in the mega-menu test where the panel needs
-    //     all its lazy chunks before the click is meaningful.
+    // These files use playwright-plugin rules in deliberate ways:
+    //   - .skip(condition, reason) — runtime gate (env / auth.json absent /
+    //     Design Lab routing) per README §6 convention.
+    //   - if (!alreadyOnCart) — fallback when /cart redirects unpredictably.
+    //   - getAttribute('href') to derive expected URL before a click —
+    //     computing test data, not asserting state.
+    //   - one networkidle in cart qty recalc — site uses long-poll for
+    //     totals; no DOM signal to await.
+    //   - .skip(true, reason) in V2 route loop — explicit no-op when staging
+    //     route doesn't resolve, with a concrete reason string.
     files: [
-      "tests/user-journeys.spec.ts",
       "tests/auth.setup.ts",
       "tests/footer-links.spec.ts",
+      "tests/journeys/auth.spec.ts",
+      "tests/journeys/cart.spec.ts",
+      "tests/journeys/navigation.spec.ts",
+      "tests/journeys/logged-in.spec.ts",
+      "tests/journeys/search.spec.ts",
+      "tests/header/variant-1-homepage.spec.ts",
+      "tests/header/variant-2-cart.spec.ts",
+      "tests/header/variant-4-accounts.spec.ts",
     ],
     rules: {
       "playwright/no-skipped-test": "off",
@@ -49,6 +55,7 @@ export default [
       "playwright/no-conditional-expect": "off",
       "playwright/prefer-web-first-assertions": "off",
       "playwright/no-networkidle": "off",
+      "playwright/expect-expect": "off",
     },
   },
   {

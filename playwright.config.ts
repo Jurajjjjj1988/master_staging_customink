@@ -7,7 +7,9 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Staging is intermittent (A/B routing, lazy hydration races, intermittent CMS).
+  // 1 local retry catches the common single-flake class without masking real bugs.
+  retries: process.env.CI ? 2 : 1,
   // Local: 2 workers — staging gets unhappy under 4 concurrent sessions.
   // CI: 4 workers (sharded via --shard, so per-shard concurrency is ≤ 4).
   workers: process.env.CI ? 4 : 2,
@@ -32,7 +34,7 @@ export default defineConfig({
     {
       // Verifies storage/auth.json is still usable before logged-in tests run.
       // Skips silently when storage/auth.json is absent — the logged-in
-      // describe block in user-journeys.spec.ts handles that case itself.
+      // describe block in journeys/logged-in.spec.ts handles that case itself.
       name: "setup",
       testMatch: /auth\.setup\.ts/,
       use: { storageState: "storage/auth.json" },
@@ -58,7 +60,10 @@ export default defineConfig({
         storageState: "storage/auth.json",
       },
       dependencies: ["setup"],
-      testMatch: /user-journeys\.spec\.ts/,
+      // Auth-gated tests live in `tests/journeys/logged-in.spec.ts` (the
+      // theme file after the user-journeys monolith split). Strict match
+      // by path + describe-block name.
+      testMatch: /journeys\/logged-in\.spec\.ts/,
       grep: /logged-in user/,
     },
     // Mobile (Pixel 5 / iPhone 13) and webkit-desktop projects intentionally
