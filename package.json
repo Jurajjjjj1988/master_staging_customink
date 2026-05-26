@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
+    "check:drift": "tsc scripts/check-doc-test-drift.ts --outDir scripts/.compiled --module nodenext --moduleResolution nodenext --target es2022 --strict --esModuleInterop --skipLibCheck --types node && node scripts/.compiled/check-doc-test-drift.js",
     "check": "npm run typecheck && npm run lint && npm run test:p1"
   },
   "devDependencies": {

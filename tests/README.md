@@ -70,6 +70,10 @@ npm run test:prod-smoke
 
 # Single test file in list-only mode (sanity check)
 npx playwright test tests/header/variant-0-common.spec.ts --list
+
+# Doc/test drift check — orphan V<id> refs in describe titles AND untested doc §
+# Exit 0 = aligned, exit 1 = drift (report printed to stdout).
+npm run check:drift
 ```
 
 ## Conventions for new tests
