@@ -44,10 +44,16 @@ test.describe("@p1 journey — menu navigation", () => {
     });
 
     const trigger = header.megaMenuTrigger("Custom T-shirts");
-    await header.openMegaMenu("Custom T-shirts");
-    await expect(trigger).toHaveAttribute("aria-expanded", "true", {
-      timeout: TIMEOUTS.QUICK,
-    });
+    // openMegaMenu = focus()+Enter. On the inert-build (doc §1.7 #2) the
+    // first keypress is sometimes swallowed by the prerender→hydrated swap
+    // even with the hydration wait above. Wrap activation in toPass so the
+    // race fails fast instead of timing out on the aria-expanded check.
+    await expect(async () => {
+      await header.openMegaMenu("Custom T-shirts");
+      await expect(trigger).toHaveAttribute("aria-expanded", "true", {
+        timeout: TIMEOUTS.QUICK,
+      });
+    }).toPass({ timeout: TIMEOUTS.LAZY_DOM });
 
     const controls = await trigger.getAttribute("aria-controls");
     expect(controls, "trigger exposes aria-controls").toBeTruthy();

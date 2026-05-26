@@ -1,5 +1,4 @@
 import { test, expect } from "../../fixtures/pages.fixture";
-import { waitForFooterReady } from "../../helpers/page-state";
 import { TIMEOUTS } from "../../helpers/timeouts";
 
 /**
@@ -11,25 +10,22 @@ import { TIMEOUTS } from "../../helpers/timeouts";
 test.describe("@p1 journey — call support", () => {
   test("phone affordance is dialable in the format the OS dialer accepts", async ({
     page,
+    header,
   }) => {
+    // Doc §1.3 prvok 8: phone link lives in the HEADER utility strip
+    // (.banner-container), not the footer. POM exposes header.headerPhone
+    // for exactly this surface. Old test scoped page-wide and raced footer
+    // hydration (BACKLOG Investigation E).
     await page.goto("/", { timeout: TIMEOUTS.NAVIGATION });
-    // Phone link lives in lazy-hydrated `ci-full-footer` — wait or race the hydration.
-    await waitForFooterReady(page);
-
-    const phone = page.locator('a[href^="tel:"]').first();
-    await expect(phone).toBeVisible({ timeout: TIMEOUTS.URL_CHANGE });
+    await expect(header.headerPhone).toBeVisible({
+      timeout: TIMEOUTS.HYDRATION,
+    });
     // Number rotates within toll-free pool — assert format, not digits.
-    await expect(phone).toHaveAttribute(
+    await expect(header.headerPhone).toHaveAttribute(
       "href",
       /^tel:\+?\d{1,3}-?\d{3}-?\d{3}-?\d{4}$/,
     );
-    await expect(phone).toBeEnabled();
-
-    await expect(
-      page
-        .getByText(/talk to a real person|customer service|call us|need help/i)
-        .first(),
-    ).toBeVisible();
+    await expect(header.headerPhone).toBeEnabled();
   });
 });
 

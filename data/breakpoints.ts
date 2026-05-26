@@ -15,18 +15,18 @@ export const BREAKPOINTS = [
     name: "tablet-768",
     viewport: { width: 768, height: 1024 },
     expectedChrome: "mobile" as const,
-    // Probe 2026-05-25: at 768px hamburger has visibility:hidden (live DOM).
-    // Doc §1.4.8 says "≤ 1023 px" — staging discrepancy. Tracked as gap.
-    expectedHamburger: false,
+    // Doc §1.5: hamburger visible at all viewports ≤ 1023 px. 2026-05-25 probe
+    // saw it hidden at 768 (staging fluctuation); 2026-05-26 re-run shows it
+    // visible again. Treat doc as source-of-truth — a build that hides the
+    // hamburger here is a regression worth surfacing, not a test gap.
+    expectedHamburger: true,
     expectedMegaMenus: false,
   },
   {
     name: "tablet-edge-1023",
     viewport: { width: 1023, height: 768 },
-    expectedChrome: "mobile" as const, // boundary — last mobile px
-    // Probe 2026-05-25: at 1023px hamburger still hidden (staging breakpoint
-    // appears stricter than doc §1.4.8 "≤ 1023 px" — possibly ≤ 480 px only).
-    expectedHamburger: false,
+    expectedChrome: "mobile" as const, // boundary — last mobile px per doc §1.5
+    expectedHamburger: true,
     expectedMegaMenus: false,
   },
   {
