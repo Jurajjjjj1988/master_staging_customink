@@ -43,6 +43,7 @@ export default [
       "tests/journeys/navigation.spec.ts",
       "tests/journeys/logged-in.spec.ts",
       "tests/journeys/search.spec.ts",
+      "tests/journeys/support.spec.ts",
       "tests/header/variant-1-homepage.spec.ts",
       "tests/header/variant-2-cart.spec.ts",
       "tests/header/variant-4-accounts.spec.ts",

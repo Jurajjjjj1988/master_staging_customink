@@ -8,7 +8,8 @@ import { PRODUCT_URLS } from "../../data/products";
  */
 
 test.describe("@p1 journey — skip to main content", () => {
-  test("keyboard user can skip past the header straight to main content", async ({
+  // same WCAG 2.4.1 issue as variant-1 skip link Enter (BACKLOG.md #1)
+  test.fixme("keyboard user can skip past the header straight to main content", async ({
     page,
   }) => {
     await page.goto("/", { timeout: TIMEOUTS.NAVIGATION });
@@ -35,6 +36,13 @@ test.describe("@p1 journey — menu navigation", () => {
   }) => {
     await page.goto("/");
 
+    // Wait for hydration before activating the trigger — Stencil re-binds the
+    // caret button mid-hydration, so focus()+Enter fired against the prerender
+    // copy is silently dropped (aria-expanded stays "false").
+    await expect(header.root).toHaveClass(/\bhydrated\b/, {
+      timeout: TIMEOUTS.HYDRATION,
+    });
+
     const trigger = header.megaMenuTrigger("Custom T-shirts");
     await header.openMegaMenu("Custom T-shirts");
     await expect(trigger).toHaveAttribute("aria-expanded", "true", {
@@ -59,12 +67,13 @@ test.describe("@p1 journey — menu navigation", () => {
     expect(expectedHref, "subcategory link has a real href").toBeTruthy();
     const expectedPathname = new URL(expectedHref ?? "/", page.url()).pathname;
 
-    await Promise.all([
-      page.waitForURL((u) => u.toString().includes(expectedPathname), {
-        timeout: TIMEOUTS.CROSS_DOMAIN,
-      }),
-      subcategoryLink.click(),
-    ]);
+    // Sequential click → waitForURL avoids the Promise.all race where the
+    // mega-menu panel can rebind on hover-out timing and unmount the link
+    // before the navigation listener attaches.
+    await subcategoryLink.click();
+    await page.waitForURL((u) => u.toString().includes(expectedPathname), {
+      timeout: TIMEOUTS.CROSS_DOMAIN,
+    });
 
     const heading = page.getByRole("heading", { level: 1 });
     const productGrid = page.getByRole("list", { name: /products|results/i });

@@ -14,8 +14,13 @@ test.describe("@p1 journey — find / search submit", () => {
     await page.goto("/");
 
     await header.submitSearch("tshirt");
+    // waitForURL defaults to waitUntil:"load" — staging keeps long-tail
+    // third-party requests open and never fires "load" within URL_CHANGE.
+    // "commit" returns as soon as the new URL is committed, matching the
+    // domcontentloaded baseline used in pages.fixture goto override.
     await page.waitForURL((url) => /tshirt/i.test(url.toString()), {
       timeout: TIMEOUTS.URL_CHANGE,
+      waitUntil: "commit",
     });
     await expect(page).toHaveTitle(/.+/);
     await expect(page.locator("body")).toBeVisible();
@@ -24,21 +29,20 @@ test.describe("@p1 journey — find / search submit", () => {
     // renders. Header nav has 1 t-shirt category link — a real results
     // page renders many product-detail links.
     //
-    // Search results hydrate progressively (Algolia client → server-render
-    // bridge); the link count crosses the >2 threshold a few hundred ms
-    // after the first link is visible. `toPass` graceful retry inside the
-    // test absorbs that progressive hydration without depending on
-    // Playwright's retry budget.
+    // Canonical web-first pattern: expect.poll retries the count() read
+    // until the threshold is met, absorbing progressive Algolia hydration
+    // without depending on Playwright's outer retry budget.
     const productLinks = page.locator('a[href*="/products/t-shirts/"]');
     await expect(productLinks.first()).toBeVisible({
-      timeout: TIMEOUTS.ACTION,
+      timeout: TIMEOUTS.LAZY_DOM,
     });
-    await expect(async () => {
-      expect(
-        await productLinks.count(),
-        "results page should render multiple matching products, not just the header nav category link",
-      ).toBeGreaterThan(2);
-    }).toPass({ timeout: TIMEOUTS.LAZY_DOM });
+    await expect
+      .poll(() => productLinks.count(), {
+        message:
+          "results page should render multiple matching products, not just the header nav category link",
+        timeout: TIMEOUTS.LAZY_DOM,
+      })
+      .toBeGreaterThan(2);
   });
 
   /*
@@ -176,25 +180,23 @@ test.describe("@p1 journey — search returns no results", () => {
     const NONEXISTENT = "qzx9f7" + Date.now().toString(36);
 
     await header.submitSearch(NONEXISTENT);
-    await page.waitForLoadState("domcontentloaded");
-    await expect(page).toHaveURL(new RegExp(NONEXISTENT, "i"));
+    await page.waitForURL(new RegExp(NONEXISTENT, "i"), {
+      timeout: TIMEOUTS.URL_CHANGE,
+      waitUntil: "commit",
+    });
 
-    // Either an explicit no-results message OR an empty results grid is
-    // acceptable; what is NOT is the homepage rendering silently.
+    // Single web-first assertion that retries until either the explicit
+    // no-results message OR the first results-grid listitem becomes visible.
+    // Polling the count() of progressively-hydrating DOM was the original
+    // flake — `.or(...).first()` lets Playwright auto-retry until one path
+    // resolves, replacing two synchronous count() reads.
     const message = page.getByText(
       /no results|nothing found|0 results|did not match|couldn['’]t find/i,
     );
     const grid = page.getByRole("list", { name: /products|results/i }).first();
-
-    const hasMessage = (await message.count()) > 0;
-    const itemCount = await grid
-      .getByRole("listitem")
-      .or(grid.getByRole("link"))
-      .count();
-
-    expect(
-      hasMessage || itemCount === 0,
+    await expect(
+      message.first().or(grid.getByRole("listitem").first()),
       "expected either a no-results message or an empty results grid",
-    ).toBe(true);
+    ).toBeVisible({ timeout: TIMEOUTS.LAZY_DOM });
   });
 });

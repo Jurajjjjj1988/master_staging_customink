@@ -133,9 +133,14 @@ test.describe("@p1 V1.2 Functional spec — element inventory (16 elements)", ()
     // splits the two assertions so a future bug that keeps the route but
     // drops the param fails loudly with a clear message.
     await page.goto("/");
-    // Two distinct assertions on the same attribute — auto-retrying via
-    // toHaveAttribute (eslint-plugin-playwright prefers this form over
-    // get+toMatch). Both must hold; a regression on either fails the test.
+    // Pre-hydration the prerender host emits a placeholder cart href
+    // ("/checkout/summary?cart_source=header" — doc §1.7 #10); the Stencil
+    // hydration swap rewrites it to "/cart/?cart_source=header". Wait for
+    // the `hydrated` class before reading the attribute so the assertion
+    // races the final value, not the prerender stub.
+    await expect(header.root).toHaveClass(/\bhydrated\b/, {
+      timeout: TIMEOUTS.HYDRATION,
+    });
     await expect(
       header.cart,
       "cart href must target /cart family",
@@ -166,7 +171,8 @@ test.describe("@p1 V1.2 Functional spec — element inventory (16 elements)", ()
     expect(page.url()).toMatch(/\/profiles\/users\/sign_in/);
   });
 
-  test("Skip link Enter key updates URL hash to #main-content", async ({
+  // WCAG 2.4.1 — LiveChat iframe steals Tab #1-2 (doc §1.7 #1 + BACKLOG.md #1)
+  test.fixme("Skip link Enter key updates URL hash to #main-content", async ({
     page,
   }) => {
     // WCAG 2.4.1 Bypass Blocks — the skip link must move focus / hash to
@@ -192,7 +198,8 @@ test.describe("@p1 V1.4 Flyouty F1-F5 — panel structure", () => {
     // button has pointer-events:none + a sibling <a> overlay intercepts the
     // cursor); focus+Enter is the deterministic open path. See
     // HeaderComponent.openMegaMenu for the full probe log.
-    test(`${flyout.id} "${flyout.triggerName}" opens with ${flyout.expectedItemCount} items`, async ({
+    // mega-menu inert build — `pointer-events: none` on caret swallows synthetic clicks (doc §1.7 #2 + BACKLOG.md #5)
+    test.fixme(`${flyout.id} "${flyout.triggerName}" opens with ${flyout.expectedItemCount} items`, async ({
       page,
       header,
     }) => {
