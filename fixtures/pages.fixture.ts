@@ -43,27 +43,24 @@ export const test = base.extend<Fixtures, Options>({
   dismissCookie: [true, { option: true, scope: "worker" }],
 
   /**
-   * Override `page.goto` AND `page.waitForURL` default `waitUntil`. The site
-   * keeps long-tail third-party requests open (CMS rotation, CORS-blocked
-   * production fetches per allowlist below, lazy-hydrating Web Components) —
-   * the default `"load"` would wait for ALL of those to settle, which they
-   * never do. DOM is interactive in ~2 s; waiting for "load" was the dominant
-   * timeout class in the suite (search:175 + support:96 flake root cause).
-   *
-   * `goto` defaults to `"domcontentloaded"` (full DOM parsed).
-   * `waitForURL` defaults to `"commit"` (URL committed; subsequent web-first
-   * assertions on DOM auto-retry until the page hydrates).
+   * Override `page.goto` default `waitUntil` from `"load"` to
+   * `"domcontentloaded"`. The site keeps long-tail third-party requests
+   * open (CMS rotation, CORS-blocked production fetches per allowlist
+   * below, lazy-hydrating Web Components) — `"load"` would wait for ALL
+   * of those to settle, which they never do. DOM is interactive in ~2s;
+   * waiting for "load" was the dominant timeout class in the suite.
    * Per-call overrides still win — pass `{ waitUntil: "load" }` to opt out.
+   *
+   * NOTE: An earlier iteration ALSO overrode `page.waitForURL` default to
+   * `"commit"`. It broke hash-route waits (Lab `#/welcome`, skip-link
+   * `#main-content`) — hash changes don't fire a commit event so the wait
+   * timed out (1.1 h suite wall). Rolled back; the few callsites that need
+   * "commit" pass it explicitly.
    */
   page: async ({ page }, use) => {
     const origGoto = page.goto.bind(page);
     page.goto = (url, options) =>
       origGoto(url, { waitUntil: "domcontentloaded", ...options });
-
-    const origWaitForURL = page.waitForURL.bind(page);
-    page.waitForURL = (url: Parameters<typeof origWaitForURL>[0], options) =>
-      origWaitForURL(url, { waitUntil: "commit", ...options });
-
     await use(page);
   },
 

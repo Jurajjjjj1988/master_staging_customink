@@ -101,8 +101,12 @@ test.describe("@p1 journey — favorites (guest)", () => {
     await expect(header.favorites).toBeVisible({ timeout: TIMEOUTS.ACTION });
 
     await Promise.all([
+      // Explicit waitUntil:"commit" — the default "load" never fires on
+      // this site (long-tail third-party requests). DOM-first assertion
+      // below auto-retries until the empty-state copy is visible.
       page.waitForURL(/\/products\/favorites/, {
         timeout: TIMEOUTS.URL_CHANGE,
+        waitUntil: "commit",
       }),
       header.favorites.click(),
     ]);
